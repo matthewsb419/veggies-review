@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Veggies First Review</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800&display=swap">
+<style>
+/* One column on a phone, the same column centered on a desktop: a reading pane for an inbox. */
+:root {
+  --bg: #f6f7f3;
+  --panel: #ffffff;
+  --fg: #22301f;
+  --muted: #6b7a66;
+  --line: #dde3d6;
+  --accent: #4e8a5a;
+  --accent-ink: #ffffff;
+  --bug: #c2563b;
+  --idea: #c99a2e;
+  --font: "Nunito", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #171b15; --panel: #202619; --fg: #e9eee4; --muted: #9aa893; --line: #333d2e;
+    --accent: #7cbf88; --accent-ink: #10180f; --bug: #e07a60; --idea: #e2b857; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #171b15; --panel: #202619; --fg: #e9eee4; --muted: #9aa893; --line: #333d2e;
+  --accent: #7cbf88; --accent-ink: #10180f; --bug: #e07a60; --idea: #e2b857; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.45 var(--font); }
+body { padding-block: 0 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+main { max-width: 680px; margin: 0 auto; }
+h1 { font-size: 1.35rem; font-weight: 800; margin: 0; letter-spacing: -0.01em; }
+h2 { font-size: 1.05rem; font-weight: 800; margin: 24px 0 8px; }
+button, select, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 8px 14px; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 800; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+input, select, textarea { width: 100%; border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 10px 12px; }
+textarea { min-height: 72px; resize: vertical; }
+label { display: block; font-size: 0.85rem; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+header.bar { position: sticky; top: env(safe-area-inset-top, 0px); background: var(--bg); padding-block: 14px 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; z-index: 5; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+nav.tabs { display: flex; gap: 6px; margin: 4px 0 16px; }
+nav.tabs button { flex: 1; padding: 10px 6px; font-weight: 600; }
+nav.tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.chips button { padding: 5px 11px; border-radius: 999px; font-size: 0.85rem; }
+.chips button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.list { display: flex; flex-direction: column; gap: 10px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; min-width: 0; }
+.card.open { border-color: var(--accent); }
+.row { display: flex; align-items: baseline; gap: 10px; justify-content: space-between; }
+.row .title { font-weight: 800; min-width: 0; overflow-wrap: anywhere; }
+.row .when { color: var(--muted); font-size: 0.8rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.meta { color: var(--muted); font-size: 0.82rem; margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap; }
+.pill { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
+.pill.bug { background: var(--bug); color: #fff; }
+.pill.feature { background: var(--idea); color: #1d1600; }
+.pill.status { border: 1px solid var(--line); color: var(--muted); }
+.pill.status.new { border-color: var(--accent); color: var(--accent); }
+.detail { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); display: grid; gap: 12px; }
+.detail p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+pre.log { margin: 0; max-height: 260px; overflow: auto; font: 12px/1.4 var(--mono); background: var(--bg); border-radius: 10px; padding: 10px; }
+details summary { cursor: pointer; color: var(--muted); font-weight: 600; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 420px) { .two { grid-template-columns: 1fr; } }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-bottom: 14px; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.tile b { display: block; font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+.tile span { color: var(--muted); font-size: 0.8rem; }
+.empty { color: var(--muted); padding: 24px 0; text-align: center; }
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-weight: 600; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.toast.show { opacity: 1; }
+.err { color: var(--bug); font-weight: 600; }
+form.login { display: grid; gap: 12px; max-width: 360px; margin: 48px auto; }
+a { color: var(--accent); overflow-wrap: anywhere; }
+.copy { font-size: 0.8rem; padding: 3px 9px; }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+</style>
+</head>
+<body>
+<main>
+  <header class="bar">
+    <h1>🥕 Veggies First review</h1>
+    <button id="signout" hidden>Sign out</button>
+  </header>
+
+  <section id="login" hidden>
+    <form class="login" id="loginForm">
+      <div><label for="email">Email</label><input id="email" type="email" autocomplete="username" required></div>
+      <div><label for="password">Password</label><input id="password" type="password" autocomplete="current-password" required></div>
+      <button class="primary" type="submit">Sign in</button>
+      <p class="err" id="loginErr" hidden></p>
+      <p style="color:var(--muted);font-size:.85rem;margin:0">Only listed reviewers can see anything here. Reports and answers come from the app.</p>
+    </form>
+  </section>
+
+  <section id="app" hidden>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="inbox" aria-selected="true">Inbox</button>
+      <button role="tab" data-tab="answers" aria-selected="false">Answers</button>
+      <button role="tab" data-tab="creators" aria-selected="false">Creators</button>
+    </nav>
+
+    <div id="inbox" role="tabpanel">
+      <div class="chips" id="statusChips"></div>
+      <div class="list" id="inboxList"></div>
+    </div>
+
+    <div id="answers" role="tabpanel" hidden>
+      <div class="tiles" id="sourceTiles"></div>
+      <h2>Per creator</h2>
+      <div class="list" id="creatorTotals"></div>
+      <h2>Every answer</h2>
+      <div class="list" id="answerList"></div>
+    </div>
+
+    <div id="creators" role="tabpanel" hidden>
+      <form class="card" id="creatorForm" style="display:grid;gap:10px">
+        <strong>Add a partner creator</strong>
+        <div class="two">
+          <div><label for="cPlatform">Platform</label>
+            <select id="cPlatform"><option value="tiktok">TikTok</option><option value="youtube">YouTube</option><option value="instagram">Instagram</option><option value="other">Other</option></select></div>
+          <div><label for="cHandle">Handle</label><input id="cHandle" placeholder="@name" required></div>
+        </div>
+        <div><label for="cName">Display name (what the app shows)</label><input id="cName" required></div>
+        <div><label for="cUrl">Channel or profile link</label><input id="cUrl" type="url" placeholder="https://"></div>
+        <div><label for="cNote">Commission note (private)</label><input id="cNote" placeholder="e.g. 20% of first-year sales, paid monthly"></div>
+        <div class="actions"><button class="primary" type="submit">Add creator</button><span class="err" id="creatorErr"></span></div>
+      </form>
+      <h2>Partners</h2>
+      <div class="list" id="creatorList"></div>
+    </div>
+  </section>
+</main>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+const SUPABASE_URL = "https://wmdexaafwwjytatzekur.supabase.co";
+const SUPABASE_KEY = "sb_publishable_5wUh_-ewDhebRYonDwjsaA_6wv6C2wX";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const STATUSES = ["new", "looking", "planned", "done", "wont_fix"];
+const STATUS_LABEL = { new: "New", looking: "Looking", planned: "Planned", done: "Done", wont_fix: "Won't fix" };
+const SOURCE_LABEL = { tiktok: "TikTok", youtube: "YouTube", instagram: "Instagram", friend: "A friend", app_store: "App Store", search: "Web search", other: "Somewhere else" };
+const $ = (id) => document.getElementById(id);
+let statusFilter = "new";
+let creatorsById = {};
+let openId = null;
+
+function toast(text) {
+  const t = $("toast"); t.textContent = text; t.classList.add("show");
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => t.classList.remove("show"), 1800);
+}
+function ago(iso) {
+  const s = (Date.now() - new Date(iso)) / 1000;
+  if (s < 3600) return Math.max(1, Math.round(s / 60)) + " min ago";
+  if (s < 86400) return Math.round(s / 3600) + " h ago";
+  if (s < 86400 * 14) return Math.round(s / 86400) + " d ago";
+  return new Date(iso).toLocaleDateString();
+}
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+async function copy(text) {
+  try { await navigator.clipboard.writeText(text); toast("Copied"); } catch { toast(text); }
+}
+
+// Sign-in
+async function boot() {
+  const { data: { session } } = await sb.auth.getSession();
+  show(!!session);
+  sb.auth.onAuthStateChange((_e, s) => show(!!s));
+}
+function show(signedIn) {
+  $("login").hidden = signedIn; $("app").hidden = !signedIn; $("signout").hidden = !signedIn;
+  if (signedIn) loadAll();
+}
+$("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("loginErr").hidden = true;
+  const { error } = await sb.auth.signInWithPassword({ email: $("email").value.trim(), password: $("password").value });
+  if (error) { $("loginErr").textContent = error.message; $("loginErr").hidden = false; }
+});
+$("signout").addEventListener("click", () => sb.auth.signOut());
+
+// Tabs
+document.querySelectorAll("nav.tabs button").forEach((b) => b.addEventListener("click", () => {
+  document.querySelectorAll("nav.tabs button").forEach((x) => x.setAttribute("aria-selected", x === b));
+  ["inbox", "answers", "creators"].forEach((id) => { $(id).hidden = id !== b.dataset.tab; });
+  try { localStorage.setItem("tab", b.dataset.tab); } catch {}
+}));
+try { const t = localStorage.getItem("tab"); if (t) document.querySelector(`nav.tabs button[data-tab="${t}"]`)?.click(); } catch {}
+
+async function loadAll() {
+  const { data: creators } = await sb.from("creators").select("*").order("display_name");
+  creatorsById = Object.fromEntries((creators || []).map((c) => [c.id, c]));
+  renderCreators(creators || []);
+  await Promise.all([loadInbox(), loadAnswers()]);
+}
+
+// Inbox
+function renderChips(counts) {
+  $("statusChips").innerHTML = ["new", "looking", "planned", "done", "wont_fix", "all"].map((s) =>
+    `<button aria-pressed="${statusFilter === s}" data-s="${s}">${s === "all" ? "All" : STATUS_LABEL[s]}${counts[s] ? " · " + counts[s] : ""}</button>`).join("");
+  $("statusChips").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { statusFilter = b.dataset.s; loadInbox(); }));
+}
+async function loadInbox() {
+  const { data: all, error } = await sb.from("feedback").select("*").order("created_at", { ascending: false }).limit(500);
+  if (error) { $("inboxList").innerHTML = `<p class="err">${esc(error.message)}</p>`; return; }
+  const counts = {}; all.forEach((r) => { counts[r.status] = (counts[r.status] || 0) + 1; });
+  renderChips(counts);
+  const rows = statusFilter === "all" ? all : all.filter((r) => r.status === statusFilter);
+  if (!rows.length) { $("inboxList").innerHTML = `<p class="empty">Nothing ${statusFilter === "all" ? "yet" : STATUS_LABEL[statusFilter].toLowerCase()}. Reports from the app land here.</p>`; return; }
+  $("inboxList").innerHTML = rows.map((r) => `
+    <article class="card${openId === r.id ? " open" : ""}" data-id="${r.id}">
+      <div class="row"><span class="title">${esc(r.title)}</span><span class="when">${ago(r.created_at)}</span></div>
+      <div class="meta"><span class="pill ${r.kind}">${r.kind === "bug" ? "Bug" : "Idea"}</span><span class="pill status ${r.status}">${STATUS_LABEL[r.status]}</span>
+        <span>v${esc(r.app_version)} (${esc(r.build)})</span><span>iOS ${esc(r.ios_version)}</span><span>${esc(r.device_model)}</span></div>
+      <div class="detail" ${openId === r.id ? "" : "hidden"}>
+        <p>${r.details ? esc(r.details) : "<i>No details given.</i>"}</p>
+        ${r.email ? `<div class="actions"><span>${esc(r.email)}</span><button class="copy" data-copy="${esc(r.email)}">Copy</button></div>` : "<span style='color:var(--muted)'>No email left.</span>"}
+        ${r.dessert_log ? `<details><summary>Dessert log (${r.dessert_log.split("\n").length} lines)</summary><pre class="log">${esc(r.dessert_log)}</pre></details>` : ""}
+        <div class="two">
+          <div><label for="st-${r.id}">Status</label><select id="st-${r.id}" data-status="${r.id}">${STATUSES.map((s) => `<option value="${s}" ${s === r.status ? "selected" : ""}>${STATUS_LABEL[s]}</option>`).join("")}</select></div>
+          <div><label>Install</label><div class="actions"><code style="font:12px var(--mono)">${r.install_id.slice(0, 8)}…</code><button class="copy" data-copy="${r.install_id}">Copy</button></div></div>
+        </div>
+        <div><label for="no-${r.id}">Notes (private)</label><textarea id="no-${r.id}" data-notes="${r.id}">${esc(r.notes)}</textarea></div>
+        <div class="actions"><button class="primary" data-save="${r.id}">Save</button></div>
+      </div>
+    </article>`).join("");
+  $("inboxList").querySelectorAll(".card .row").forEach((h) => h.addEventListener("click", () => {
+    const id = h.closest(".card").dataset.id; openId = openId === id ? null : id;
+    $("inboxList").querySelectorAll(".card").forEach((c) => { const on = c.dataset.id === openId; c.classList.toggle("open", on); c.querySelector(".detail").hidden = !on; });
+  }));
+  $("inboxList").querySelectorAll("[data-copy]").forEach((b) => b.addEventListener("click", () => copy(b.dataset.copy)));
+  $("inboxList").querySelectorAll("[data-save]").forEach((b) => b.addEventListener("click", async () => {
+    const id = b.dataset.save;
+    const status = document.querySelector(`[data-status="${id}"]`).value;
+    const notes = document.querySelector(`[data-notes="${id}"]`).value.trim() || null;
+    const { error } = await sb.from("feedback").update({ status, notes }).eq("id", id);
+    if (error) { toast(error.message); return; }
+    toast("Saved"); loadInbox();
+  }));
+}
+
+// Answers
+async function loadAnswers() {
+  const [{ data: rows, error }, { data: totals }] = await Promise.all([
+    sb.from("attributions").select("*").order("created_at", { ascending: false }).limit(500),
+    sb.from("creator_attributions").select("*"),
+  ]);
+  if (error) { $("answerList").innerHTML = `<p class="err">${esc(error.message)}</p>`; return; }
+  const bySource = {}; rows.forEach((r) => { bySource[r.source] = (bySource[r.source] || 0) + 1; });
+  $("sourceTiles").innerHTML = Object.keys(SOURCE_LABEL).filter((s) => bySource[s]).map((s) => `<div class="tile"><b>${bySource[s]}</b><span>${SOURCE_LABEL[s]}</span></div>`).join("")
+    || `<p class="empty">No answers yet. Each install answers once.</p>`;
+  $("creatorTotals").innerHTML = (totals || []).filter((t) => t.answers > 0).map((t) =>
+    `<div class="card"><div class="row"><span class="title">${esc(t.display_name)} <span style="color:var(--muted);font-weight:400">${esc(t.handle)} · ${SOURCE_LABEL[t.platform] || t.platform}</span></span><span class="when">${t.answers} install${t.answers === 1 ? "" : "s"}</span></div></div>`).join("")
+    || `<p class="empty">No creator picked yet.</p>`;
+  $("answerList").innerHTML = rows.length ? rows.map((r) => {
+    const c = r.creator_id ? creatorsById[r.creator_id] : null;
+    return `<div class="card"><div class="row"><span class="title">${SOURCE_LABEL[r.source] || esc(r.source)}${c ? " · " + esc(c.display_name) : ""}</span><span class="when">${ago(r.created_at)}</span></div>
+      <div class="meta">${r.link ? `<a href="${esc(r.link)}" target="_blank" rel="noopener">${esc(r.link)}</a>` : ""}${r.note ? `<span>${esc(r.note)}</span>` : ""}<span>v${esc(r.app_version)}</span><span>${r.install_id.slice(0, 8)}…</span></div></div>`;
+  }).join("") : "";
+}
+
+// Creators
+function renderCreators(list) {
+  $("creatorList").innerHTML = list.length ? list.map((c) => `
+    <div class="card">
+      <div class="row"><span class="title">${esc(c.display_name)} <span style="color:var(--muted);font-weight:400">${esc(c.handle)} · ${SOURCE_LABEL[c.platform] || c.platform}</span></span>
+        <button data-toggle="${c.id}" data-active="${c.active}">${c.active ? "Listed in app" : "Hidden"}</button></div>
+      <div class="meta">${c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.url)}</a>` : ""}${c.commission_note ? `<span>💸 ${esc(c.commission_note)}</span>` : ""}</div>
+    </div>`).join("") : `<p class="empty">No partners yet. Add one above and the app lists them under that platform.</p>`;
+  $("creatorList").querySelectorAll("[data-toggle]").forEach((b) => b.addEventListener("click", async () => {
+    const { error } = await sb.from("creators").update({ active: b.dataset.active !== "true" }).eq("id", b.dataset.toggle);
+    if (error) { toast(error.message); return; }
+    loadAll();
+  }));
+}
+$("creatorForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("creatorErr").textContent = "";
+  const row = { platform: $("cPlatform").value, handle: $("cHandle").value.trim(), display_name: $("cName").value.trim(), url: $("cUrl").value.trim() || null, commission_note: $("cNote").value.trim() || null };
+  const { error } = await sb.from("creators").insert(row);
+  if (error) { $("creatorErr").textContent = error.message; return; }
+  e.target.reset(); toast("Added"); loadAll();
+});
+
+boot();
+</script>
+</body>
+</html>
