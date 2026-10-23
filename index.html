@@ -68,6 +68,10 @@ nav.tabs button[aria-selected="true"] { background: var(--accent); color: var(--
 .detail { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); display: grid; gap: 12px; }
 .detail p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 pre.log { margin: 0; max-height: 260px; overflow: auto; font: 12px/1.4 var(--mono); background: var(--bg); border-radius: 10px; padding: 10px; }
+.media { display: flex; gap: 8px; flex-wrap: wrap; }
+.media a, .media video { display: block; width: 180px; max-width: 100%; border-radius: 10px; border: 1px solid var(--line); overflow: hidden; background: var(--bg); }
+.media img { display: block; width: 100%; height: auto; }
+.media .missing { width: 180px; padding: 10px; font-size: 0.85rem; color: var(--muted); border: 1px dashed var(--line); border-radius: 10px; }
 details summary { cursor: pointer; color: var(--muted); font-weight: 600; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 @media (max-width: 420px) { .two { grid-template-columns: 1fr; } }
@@ -226,6 +230,7 @@ async function loadInbox() {
       <div class="detail" ${openId === r.id ? "" : "hidden"}>
         <p>${r.details ? esc(r.details) : "<i>No details given.</i>"}</p>
         ${r.email ? `<div class="actions"><span>${esc(r.email)}</span><button class="copy" data-copy="${esc(r.email)}">Copy</button></div>` : "<span style='color:var(--muted)'>No email left.</span>"}
+        ${(r.attachments || []).length ? `<div class="media" data-media="${r.id}"><span class="missing">Loading ${r.attachments.length} attachment${r.attachments.length === 1 ? "" : "s"}…</span></div>` : ""}
         ${r.dessert_log ? `<details><summary>Dessert log (${r.dessert_log.split("\n").length} lines)</summary><pre class="log">${esc(r.dessert_log)}</pre></details>` : ""}
         <div class="two">
           <div><label for="st-${r.id}">Status</label><select id="st-${r.id}" data-status="${r.id}">${STATUSES.map((s) => `<option value="${s}" ${s === r.status ? "selected" : ""}>${STATUS_LABEL[s]}</option>`).join("")}</select></div>
@@ -238,7 +243,9 @@ async function loadInbox() {
   $("inboxList").querySelectorAll(".card .row").forEach((h) => h.addEventListener("click", () => {
     const id = h.closest(".card").dataset.id; openId = openId === id ? null : id;
     $("inboxList").querySelectorAll(".card").forEach((c) => { const on = c.dataset.id === openId; c.classList.toggle("open", on); c.querySelector(".detail").hidden = !on; });
+    if (openId) loadMedia(rows.find((r) => r.id === openId));
   }));
+  if (openId) loadMedia(rows.find((r) => r.id === openId));
   $("inboxList").querySelectorAll("[data-copy]").forEach((b) => b.addEventListener("click", () => copy(b.dataset.copy)));
   $("inboxList").querySelectorAll("[data-save]").forEach((b) => b.addEventListener("click", async () => {
     const id = b.dataset.save;
@@ -248,6 +255,24 @@ async function loadInbox() {
     if (error) { toast(error.message); return; }
     toast("Saved"); loadInbox();
   }));
+}
+
+// Photos and clips live in a private bucket: a signed link for each, good for an hour,
+// fetched when the card opens.
+async function loadMedia(r) {
+  if (!r || !(r.attachments || []).length) return;
+  const box = document.querySelector(`[data-media="${r.id}"]`);
+  if (!box || box.dataset.loaded) return;
+  box.dataset.loaded = "1";
+  const { data, error } = await sb.storage.from("feedback-media").createSignedUrls(r.attachments, 3600);
+  if (error) { box.innerHTML = `<span class="missing">${esc(error.message)}</span>`; return; }
+  box.innerHTML = data.map((d, i) => {
+    const path = r.attachments[i];
+    if (d.error || !d.signedUrl) return `<span class="missing">Not uploaded yet: ${esc(path.split("/").pop())}</span>`;
+    return /\.(mp4|mov)$/i.test(path)
+      ? `<video controls preload="metadata" src="${esc(d.signedUrl)}"></video>`
+      : `<a href="${esc(d.signedUrl)}" target="_blank" rel="noopener"><img src="${esc(d.signedUrl)}" alt="Attachment ${i + 1}" loading="lazy"></a>`;
+  }).join("");
 }
 
 // Answers
