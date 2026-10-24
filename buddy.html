@@ -130,9 +130,10 @@ function render(data) {
 }
 
 function card(p) {
+  const urls = Array.isArray(p.photo_urls) ? p.photo_urls : (p.photo_url ? [p.photo_url] : []);
   const photo = p.kind === "photo"
-    ? (p.photo_url ? `<img src="${esc(p.photo_url)}" alt="Proof photo for ${esc(p.title)}" loading="lazy">`
-                   : `<p class="missing">${p.status === "pending" ? "The photo hasn't arrived from the phone yet." : "The photo has been deleted."}</p>`)
+    ? (urls.length ? urls.map((u, i) => `<img src="${esc(u)}" alt="Proof photo ${i + 1} of ${urls.length} for ${esc(p.title)}" loading="lazy">`).join("")
+                   : `<p class="missing">${p.status === "pending" ? "The photos haven't arrived from the phone yet." : "The photos have been deleted."}</p>`)
     : "";
   const note = p.note ? `<p class="note">“${esc(p.note)}”</p>` : "";
   let tail;
@@ -162,8 +163,8 @@ async function onVerdict(e) {
     card.querySelector("textarea")?.remove();
     card.querySelector(".verdicts")?.remove();
     card.querySelector(".err")?.remove();
-    card.querySelector("img")?.remove();
-    card.insertAdjacentHTML("beforeend", `<p class="done ${cls}" role="status">${esc(text)}${r.photo_deleted ? " · the photo's been deleted" : ""}${r.note ? ` · “${esc(r.note)}”` : ""}</p>`);
+    card.querySelectorAll("img").forEach((img) => img.remove());
+    card.insertAdjacentHTML("beforeend", `<p class="done ${cls}" role="status">${esc(text)}${r.photo_deleted ? " · the photos have been deleted" : ""}${r.note ? ` · “${esc(r.note)}”` : ""}</p>`);
     if (r.already) card.querySelector(".done").textContent = "This one was already settled: " + text.toLowerCase();
   } catch (err) {
     $("err-" + id).textContent = "That didn't go through: " + err.message + ". Try again.";
