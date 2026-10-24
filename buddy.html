@@ -210,14 +210,29 @@ async function onVerdict(e) {
   }
 }
 
-(async () => {
-  if (!token) { notice("This page needs the link from the text message. Open it from there."); return; }
+// What's on the page now, so a refresh only redraws when something changed (a redraw
+// would reset a slider being moved).
+let shown = "";
+const fingerprint = (data) => [...data.pending, ...data.settled].map((p) => p.id + ":" + p.status + ":" + (p.photo_urls || []).length).join("|");
+
+async function load(first) {
   try {
-    render(await call({ action: "list", token }));
+    const data = await call({ action: "list", token });
+    const now = fingerprint(data);
+    if (first || now !== shown) { render(data); shown = now; }
   } catch (err) {
+    if (!first) return;
     notice(err.message === "expired" ? "This link has run out. Ask whoever sent it for a fresh one and it'll show what's waiting."
            : "Couldn't load this right now. Check the connection and reload.");
   }
+}
+
+(async () => {
+  if (!token) { notice("This page needs the link from the text message. Open it from there."); return; }
+  await load(true);
+  // A tab left open picks up new proofs by itself: once a minute, and when it comes back.
+  setInterval(() => { if (!document.hidden) load(false); }, 60_000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) load(false); });
 })();
 </script>
 </body>
