@@ -158,6 +158,11 @@ function card(p) {
   const note = p.note ? `<p class="note">“${esc(p.note)}”</p>` : "";
   let tail;
   const held = Number(p.coins_held) || 0;
+  const gone = Number(p.coins_forfeited) || 0;
+  // "I forgot the proof": nothing to look at, and less riding on it.
+  const none = p.kind === "none"
+    ? `<p class="missing">No photo or note for this one: they said they forgot the proof${gone ? `, so ${gone} min were given up on the spot` : ""}. ${held ? `At most ${held} min can come back.` : ""}</p>`
+    : "";
   if (p.status === "pending") {
     const id = esc(p.id);
     tail = `<div class="award">
@@ -176,7 +181,7 @@ function card(p) {
   return `<article class="card" id="card-${esc(p.id)}">
     <div class="title">${esc(p.title)}</div>
     <div class="when">Finished ${esc(when(p.done_at))} · ${Number(p.coins_held) || 0} min of dessert riding on it</div>
-    ${photo}${note}${tail}</article>`;
+    ${photo}${none}${note}${tail}</article>`;
 }
 
 async function onVerdict(e) {
