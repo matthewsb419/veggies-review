@@ -47,7 +47,15 @@ h2 { font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spa
 .card .note { margin: 12px 0 0; padding: 10px 12px; background: var(--soft); border-radius: 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .card .missing { margin-top: 12px; color: var(--muted); font-size: 0.95rem; }
 textarea { width: 100%; border: 1px solid var(--line); background: var(--bg); color: inherit; border-radius: 10px; padding: 10px 12px; font: inherit; min-height: 48px; resize: vertical; margin-top: 12px; }
-.verdicts { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px; }
+.verdicts { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 10px; }
+.award { margin-top: 14px; }
+.award .amount { font-weight: 800; font-size: 1.05rem; margin-bottom: 6px; }
+.award .amount span { color: var(--sage); }
+input[type="range"] { width: 100%; accent-color: var(--sage); margin: 4px 0 2px; }
+.award .ends { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--muted); }
+button.send { width: 100%; margin-top: 12px; background: var(--sage); border-color: var(--sage); color: var(--sage-ink); }
+.chips { display: flex; gap: 6px; margin-top: 8px; }
+.chips button { padding: 6px 10px; font-size: 0.9rem; font-weight: 600; }
 button { font: inherit; font-weight: 800; color: var(--fg); background: var(--panel); border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 6px; cursor: pointer; }
 button.approve { background: var(--sage); border-color: var(--sage); color: var(--sage-ink); }
 button.partial { border-color: var(--carrot); color: var(--carrot-ink); }
@@ -86,7 +94,7 @@ footer { margin-top: 28px; color: var(--muted); font-size: 0.9rem; }
     <ul class="context" id="context"></ul>
   </section>
   <footer id="foot" hidden>
-    Approve pays the dessert minutes held for it, Partly OK pays half, Decline pays none; the task counts as done either way. Photos are deleted the moment you answer, and after <span id="keep">48</span> hours no matter what. This link stops working <span id="expires"></span>.
+    The slider is how much of the held dessert time to give back, from none to all; the task counts as done either way. A note back goes with it. Photos are deleted the moment you answer, and after <span id="keep">48</span> hours no matter what. This link stops working <span id="expires"></span>.
   </footer>
 </main>
 <script>
@@ -95,11 +103,15 @@ const token = location.hash.replace(/^#/, "").trim();
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const when = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" }); };
-const VERDICTS = { approve: "Approve", partial: "Partly OK", decline: "Decline" };
-const STATUS = new Map([["approved", ["approve", "You approved it"]], ["partial", ["partial", "You partly approved it"]],
-                        ["declined", ["decline", "You declined it"]], ["expired", ["", "Nobody answered in time"]],
+const STATUS = new Map([["approved", ["approve", "You gave back all of it"]], ["partial", ["partial", "You gave back part of it"]],
+                        ["declined", ["decline", "You gave back none of it"]], ["expired", ["", "Nobody answered in time"]],
                         ["withdrawn", ["", "It was taken back"]]]);
 const statusOf = (s) => STATUS.get(String(s)) || ["", "Settled"];
+const gaveLine = (status, award, held) => {
+  const [cls, text] = statusOf(status);
+  if (award == null || !(held > 0)) return [cls, text];
+  return [cls, `You gave back ${award} of the ${held} min held`];
+};
 
 async function call(body) {
   const r = await fetch(API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -126,7 +138,15 @@ function render(data) {
   $("keep").textContent = data.keep_hours || 48;
   $("expires").textContent = data.expires_at ? "on " + new Date(data.expires_at).toLocaleString([], { weekday: "long", hour: "numeric", minute: "2-digit" }) : "soon";
   $("foot").hidden = false;
-  for (const el of document.querySelectorAll("[data-verdict]")) el.addEventListener("click", onVerdict);
+  for (const el of document.querySelectorAll("input[type=range]")) el.addEventListener("input", () => {
+    $("amt-" + el.id.slice(6)).textContent = el.value;
+  });
+  for (const el of document.querySelectorAll("[data-set]")) el.addEventListener("click", () => {
+    const r = $("range-" + el.dataset.id);
+    r.value = el.dataset.set === "0" ? 0 : el.dataset.set === "half" ? Math.ceil(Number(r.max) / 2) : r.max;
+    $("amt-" + el.dataset.id).textContent = r.value;
+  });
+  for (const el of document.querySelectorAll("[data-send]")) el.addEventListener("click", onVerdict);
 }
 
 function card(p) {
@@ -137,13 +157,20 @@ function card(p) {
     : "";
   const note = p.note ? `<p class="note">“${esc(p.note)}”</p>` : "";
   let tail;
+  const held = Number(p.coins_held) || 0;
   if (p.status === "pending") {
-    tail = `<textarea placeholder="A note back (optional)" aria-label="A note back about ${esc(p.title)}, optional" maxlength="300" id="note-${esc(p.id)}"></textarea>
-      <div class="verdicts">${Object.entries(VERDICTS).map(([v, label]) =>
-        `<button class="${v}" data-verdict="${v}" data-id="${esc(p.id)}">${label}</button>`).join("")}</div>
-      <p class="err" id="err-${esc(p.id)}" aria-live="polite"></p>`;
+    const id = esc(p.id);
+    tail = `<div class="award">
+        <div class="amount">Give back <span id="amt-${id}">${held}</span> of ${held} min</div>
+        <input type="range" id="range-${id}" min="0" max="${held}" step="1" value="${held}" aria-label="How much of the ${held} min held to give back">
+        <div class="ends"><span>None</span><span>Half</span><span>All</span></div>
+        <div class="chips"><button type="button" data-set="0" data-id="${id}">None</button><button type="button" data-set="half" data-id="${id}">Half</button><button type="button" data-set="all" data-id="${id}">All</button></div>
+      </div>
+      <textarea placeholder="Why, in a line (optional): “Had to re-wash two dishes”" aria-label="A note back about ${esc(p.title)}, optional" maxlength="300" id="note-${id}"></textarea>
+      <button class="send" data-send="${id}">Send verdict</button>
+      <p class="err" id="err-${id}" aria-live="polite"></p>`;
   } else {
-    const [cls, text] = statusOf(p.status);
+    const [cls, text] = gaveLine(p.status, p.coins_awarded, held);
     tail = `<p class="done ${cls}">${esc(text)}${p.verdict_note ? ` · “${esc(p.verdict_note)}”` : ""}</p>`;
   }
   return `<article class="card" id="card-${esc(p.id)}">
@@ -153,15 +180,17 @@ function card(p) {
 }
 
 async function onVerdict(e) {
-  const btn = e.currentTarget, id = btn.dataset.id, verdict = btn.dataset.verdict;
-  const buttons = btn.parentElement.querySelectorAll("button");
+  const btn = e.currentTarget, id = btn.dataset.send;
+  const card = $("card-" + id);
+  const award = Number($("range-" + id).value);
+  const buttons = card.querySelectorAll("button");
   buttons.forEach((b) => b.disabled = true);
   try {
-    const r = await call({ action: "verdict", token, proof_id: id, verdict, note: ($("note-" + id)?.value || "").trim() });
-    const [cls, text] = statusOf(r.status);
-    const card = $("card-" + id);
+    const r = await call({ action: "verdict", token, proof_id: id, award, note: ($("note-" + id)?.value || "").trim() });
+    const [cls, text] = gaveLine(r.status, r.award, r.held);
     card.querySelector("textarea")?.remove();
-    card.querySelector(".verdicts")?.remove();
+    card.querySelector(".award")?.remove();
+    card.querySelector(".send")?.remove();
     card.querySelector(".err")?.remove();
     card.querySelectorAll("img").forEach((img) => img.remove());
     card.insertAdjacentHTML("beforeend", `<p class="done ${cls}" role="status">${esc(text)}${r.photo_deleted ? " · the photos have been deleted" : ""}${r.note ? ` · “${esc(r.note)}”` : ""}</p>`);
