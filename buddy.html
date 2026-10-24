@@ -129,24 +129,56 @@ function render(data) {
     : `${who} has nothing waiting on you right now.`;
   $("intro").textContent = `${who} earns time on their fun apps by finishing tasks in Veggies First. Some tasks need someone to check them. That's you: have a look, then tap a button.`;
   $("intro").hidden = false;
-  $("pending").innerHTML = data.pending.map(card).join("");
+  // Cards are kept where nothing about them changed, so a refresh never wipes a slider
+  // or a note someone's in the middle of.
+  syncCards($("pending"), data.pending);
   $("waiting").hidden = !data.pending.length;
-  $("settled").innerHTML = data.settled.map(card).join("");
+  syncCards($("settled"), data.settled);
   $("answered").hidden = !data.settled.length;
   $("context").innerHTML = (data.context || []).map((c) => `<li>${esc(c.title)}${c.done_at ? " · " + esc(when(c.done_at)) : ""}</li>`).join("");
   $("also").hidden = !(data.context || []).length;
   $("keep").textContent = data.keep_hours || 48;
   $("expires").textContent = data.expires_at ? "on " + new Date(data.expires_at).toLocaleString([], { weekday: "long", hour: "numeric", minute: "2-digit" }) : "soon";
   $("foot").hidden = false;
-  for (const el of document.querySelectorAll("input[type=range]")) el.addEventListener("input", () => {
+}
+
+// What each card was drawn from, by proof id; a card is redrawn only when this changes.
+const drawn = new Map();
+const cardKey = (p) => [p.status, (p.photo_urls || []).length, p.coins_awarded ?? "", p.verdict_note || "", p.note || ""].join("\u0001");
+
+function syncCards(container, list) {
+  const want = new Set(list.map((p) => p.id));
+  for (const el of [...container.children]) {
+    const id = el.id.replace(/^card-/, "");
+    if (!want.has(id)) { el.remove(); drawn.delete(id); }
+  }
+  let prev = null;
+  for (const p of list) {
+    const key = cardKey(p);
+    let el = document.getElementById("card-" + p.id);
+    if (!el || drawn.get(p.id) !== key) {
+      const tmp = document.createElement("div");
+      tmp.innerHTML = card(p);
+      const fresh = tmp.firstElementChild;
+      if (el) el.replaceWith(fresh); else container.insertBefore(fresh, prev ? prev.nextSibling : container.firstChild);
+      el = fresh;
+      drawn.set(p.id, key);
+      wire(el);
+    }
+    prev = el;
+  }
+}
+
+function wire(root) {
+  for (const el of root.querySelectorAll("input[type=range]")) el.addEventListener("input", () => {
     $("amt-" + el.id.slice(6)).textContent = el.value;
   });
-  for (const el of document.querySelectorAll("[data-set]")) el.addEventListener("click", () => {
+  for (const el of root.querySelectorAll("[data-set]")) el.addEventListener("click", () => {
     const r = $("range-" + el.dataset.id);
     r.value = el.dataset.set === "0" ? 0 : el.dataset.set === "half" ? Math.ceil(Number(r.max) / 2) : r.max;
     $("amt-" + el.dataset.id).textContent = r.value;
   });
-  for (const el of document.querySelectorAll("[data-send]")) el.addEventListener("click", onVerdict);
+  for (const el of root.querySelectorAll("[data-send]")) el.addEventListener("click", onVerdict);
 }
 
 function card(p) {
@@ -210,20 +242,17 @@ async function onVerdict(e) {
   }
 }
 
-// What's on the page now, so a refresh only redraws when something changed (a redraw
-// would reset a slider being moved).
-let shown = "";
-const fingerprint = (data) => [...data.pending, ...data.settled].map((p) => p.id + ":" + p.status + ":" + (p.photo_urls || []).length).join("|");
-
 async function load(first) {
   try {
-    const data = await call({ action: "list", token });
-    const now = fingerprint(data);
-    if (first || now !== shown) { render(data); shown = now; }
+    render(await call({ action: "list", token }));
   } catch (err) {
-    if (!first) return;
-    notice(err.message === "expired" ? "This link has run out. Ask whoever sent it for a fresh one and it'll show what's waiting."
-           : "Couldn't load this right now. Check the connection and reload.");
+    if (err.message === "expired") {
+      // Run out while open: say so, and the buttons stop pretending.
+      notice("This link has run out. Ask whoever sent it for a fresh one and it'll show what's waiting.");
+      for (const b of document.querySelectorAll("[data-send]")) b.disabled = true;
+    } else if (first) {
+      notice("Couldn't load this right now. Check the connection and reload.");
+    }
   }
 }
 
