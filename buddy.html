@@ -100,6 +100,10 @@ footer { margin-top: 28px; color: var(--muted); font-size: 0.9rem; }
 <script>
 const API = "https://wmdexaafwwjytatzekur.supabase.co/functions/v1/buddy-review";
 const token = location.hash.replace(/^#/, "").trim();
+// Demo mode (#demo, or the app's Demo menu, which hands in the names): sample tasks drawn
+// right here, verdicts kept in the page, nothing sent anywhere.
+const DEMO = token === "demo" || !!window.VBD_DEMO;
+const demoNames = Object.assign({ sender: "Ben", buddy: "" }, typeof window.VBD_DEMO === "object" ? window.VBD_DEMO : {});
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const when = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" }); };
@@ -113,7 +117,54 @@ const gaveLine = (status, award, held) => {
   return [cls, `You gave back ${award} of the ${held} min held`];
 };
 
+// A stand-in photo for the demo: the live page shows the real one, stamped by the app.
+const samplePhoto = (what, when) => "data:image/svg+xml;utf8," + encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260"><rect width="400" height="260" rx="12" fill="#e4ebdf"/>` +
+  `<circle cx="200" cy="112" r="46" fill="#c9d8c0"/><text x="200" y="128" font-family="-apple-system,Segoe UI,sans-serif" font-size="44" text-anchor="middle">📷</text>` +
+  `<text x="200" y="196" font-family="-apple-system,Segoe UI,sans-serif" font-size="18" font-weight="700" text-anchor="middle" fill="#4e8a5a">${what}</text>` +
+  `<text x="14" y="246" font-family="-apple-system,Segoe UI,sans-serif" font-size="13" fill="#6b7a66">${when} · Veggies First · taken live, not from the library</text></svg>`);
+
+let demo = null;
+function demoData() {
+  if (demo) return demo;
+  const now = Date.now(), min = 60_000, ago = (m) => new Date(now - m * min).toISOString();
+  const stamp = (m) => new Date(now - m * min).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" });
+  demo = {
+    sender: demoNames.sender, keep_hours: 48, expires_at: new Date(now + 47 * 60 * min).toISOString(),
+    pending: [
+      { id: "demo-sink", title: "Clean the kitchen sink", kind: "photo", status: "pending", done_at: ago(20), coins_held: 5,
+        photo_urls: [samplePhoto("The sink, after", stamp(20))] },
+      { id: "demo-piano", title: "Practice piano", kind: "note", status: "pending", done_at: ago(90), coins_held: 5, note: "Twenty minutes of scales, then the Clementi." },
+      { id: "demo-mail", title: "Sort the mail", kind: "none", status: "pending", done_at: ago(150), coins_held: 2, coins_forfeited: 3 },
+    ],
+    settled: [
+      { id: "demo-bed", title: "Make the bed", kind: "photo", status: "approved", done_at: ago(26 * 60), coins_held: 5, coins_awarded: 5, photo_urls: [] },
+      { id: "demo-dishes", title: "Empty the dishwasher", kind: "note", status: "partial", done_at: ago(27 * 60), coins_held: 5, coins_awarded: 3,
+        note: "Done, two glasses left in the rack", verdict_note: "Glasses count too" },
+    ],
+    context: [{ title: "Walk 6,500 steps", done_at: ago(200) }, { title: "Read for 20 min", done_at: ago(300) }],
+  };
+  return demo;
+}
+
+// The demo's answer to each request: the verdict moves the card to "Already answered".
+async function demoCall(body) {
+  const d = demoData();
+  if (body.action === "verdict") {
+    const i = d.pending.findIndex((p) => p.id === body.proof_id);
+    if (i < 0) return { already: true, status: "approved", award: 0, held: 0 };
+    const p = d.pending.splice(i, 1)[0];
+    const held = Number(p.coins_held) || 0, award = Math.max(0, Math.min(held, Number(body.award) || 0));
+    p.status = award >= held ? "approved" : award > 0 ? "partial" : "declined";
+    p.coins_awarded = award; p.verdict_note = body.note || ""; p.photo_urls = [];
+    d.settled.unshift(p);
+    return { status: p.status, award, held, note: p.verdict_note, photo_deleted: p.kind === "photo" };
+  }
+  return d;
+}
+
 async function call(body) {
+  if (DEMO) return demoCall(body);
   const r = await fetch(API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const data = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(data.error || ("HTTP " + r.status));
@@ -257,6 +308,14 @@ async function load(first) {
 }
 
 (async () => {
+  if (DEMO) {
+    // A sample, as the app's Demo menu shows it: say so, and leave the lede to render().
+    const who = demoNames.buddy ? demoNames.buddy : "your reviewer";
+    $("notice").textContent = `A sample of what ${who} sees after the text. The buttons work here, and nothing is sent.`;
+    $("notice").hidden = false;
+    render(await call({ action: "list" }));
+    return;
+  }
   if (!token) { notice("This page needs the link from the text message. Open it from there."); return; }
   await load(true);
   // A tab left open picks up new proofs by itself: once a minute, and when it comes back.
