@@ -147,7 +147,8 @@ function demoData() {
   return demo;
 }
 
-// The demo's answer to each request: the verdict moves the card to "Already answered".
+// The demo's answer to each request: a verdict settles the card, and the list that follows
+// shows it under "Already answered".
 async function demoCall(body) {
   const d = demoData();
   if (body.action === "verdict") {
@@ -287,6 +288,8 @@ async function onVerdict(e) {
     card.querySelectorAll("img").forEach((img) => img.remove());
     card.insertAdjacentHTML("beforeend", `<p class="done ${cls}" role="status">${esc(text)}${r.photo_deleted ? " · the photos have been deleted" : ""}${r.note ? ` · “${esc(r.note)}”` : ""}</p>`);
     if (r.already) card.querySelector(".done").textContent = "This one was already settled: " + text.toLowerCase();
+    // Then the fresh list, which moves the card to "Already answered" and redoes the lede.
+    try { render(await call({ action: "list", token })); } catch {}
   } catch (err) {
     $("err-" + id).textContent = "That didn't go through: " + err.message + ". Try again.";
     buttons.forEach((b) => b.disabled = false);
