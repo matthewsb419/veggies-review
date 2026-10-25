@@ -46,6 +46,7 @@ h2 { font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spa
 .card img { display: block; width: 100%; height: auto; max-height: 70vh; object-fit: contain; border-radius: 12px; margin-top: 12px; background: var(--soft); }
 .card .note { margin: 12px 0 0; padding: 10px 12px; background: var(--soft); border-radius: 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .card .missing { margin-top: 12px; color: var(--muted); font-size: 0.95rem; }
+.card .test { margin: 10px 0 0; padding: 8px 12px; border-radius: 10px; background: var(--soft); color: var(--muted); font-size: 0.95rem; }
 textarea { width: 100%; border: 1px solid var(--line); background: var(--bg); color: inherit; border-radius: 10px; padding: 10px 12px; font: inherit; min-height: 48px; resize: vertical; margin-top: 12px; }
 .verdicts { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 10px; }
 .award { margin-top: 14px; }
@@ -176,8 +177,13 @@ function notice(text) { $("notice").textContent = text; $("notice").hidden = fal
 
 function render(data) {
   const who = data.sender ? data.sender : "Someone";
+  senderName = who;
+  for (const p of [...data.pending, ...data.settled]) if (p.test) testIDs.add(p.id);
+  const tests = data.pending.filter((p) => p.test).length;
   $("lede").textContent = data.pending.length
-    ? `${who} finished ${data.pending.length === 1 ? "a task" : data.pending.length + " tasks"} that need${data.pending.length === 1 ? "s" : ""} your OK.`
+    ? (tests === data.pending.length
+      ? `${who} sent you a test so you can see how this works. Nothing rides on it.`
+      : `${who} finished ${data.pending.length === 1 ? "a task" : data.pending.length + " tasks"} that need${data.pending.length === 1 ? "s" : ""} your OK.`)
     : `${who} has nothing waiting on you right now.`;
   $("intro").textContent = `${who} earns time on their fun apps by finishing tasks in Veggies First. Some tasks need someone to check them. That's you: have a look, then tap a button.`;
   $("intro").hidden = false;
@@ -194,9 +200,14 @@ function render(data) {
   $("foot").hidden = false;
 }
 
+// Who sent the link, and which proofs are tests ("Send a test" in the app: a sample made
+// for the link, answered like a real one, with nothing paid for it).
+let senderName = "Someone";
+const testIDs = new Set();
+
 // What each card was drawn from, by proof id; a card is redrawn only when this changes.
 const drawn = new Map();
-const cardKey = (p) => [p.status, (p.photo_urls || []).length, p.coins_awarded ?? "", p.verdict_note || "", p.note || ""].join("\u0001");
+const cardKey = (p) => [p.status, (p.photo_urls || []).length, p.coins_awarded ?? "", p.verdict_note || "", p.note || "", p.test ? senderName : ""].join("\u0001");
 
 function syncCards(container, list) {
   const want = new Set(list.map((p) => p.id));
@@ -237,7 +248,12 @@ function card(p) {
   const urls = Array.isArray(p.photo_urls) ? p.photo_urls : (p.photo_url ? [p.photo_url] : []);
   const photo = (p.kind === "photo" || p.kind === "screen")
     ? (urls.length ? urls.map((u, i) => `<img src="${esc(u)}" alt="Proof photo ${i + 1} of ${urls.length} for ${esc(p.title)}" loading="lazy">`).join("")
-                   : `<p class="missing">${p.status === "pending" ? "The photos haven't arrived from the phone yet." : "The photos have been deleted."}</p>`)
+       // A test has no photo from a phone: a sample stands in while it waits.
+       : p.test ? (p.status === "pending" ? `<img src="${samplePhoto("The bed, made (a sample)", when(p.done_at))}" alt="A sample photo, standing in for the one a real proof would have">` : "")
+                : `<p class="missing">${p.status === "pending" ? "The photos haven't arrived from the phone yet." : "The photos have been deleted."}</p>`)
+    : "";
+  const test = p.test
+    ? `<p class="test">🧪 A test from ${esc(senderName)}: nothing rides on this one. Answer it like a real one and their phone will say you did.</p>`
     : "";
   // A screenshot: taken live by the phone's own screen recording, of the app named.
   const screen = p.kind === "screen"
@@ -264,12 +280,12 @@ function card(p) {
       <p class="err" id="err-${id}" aria-live="polite"></p>`;
   } else {
     const [cls, text] = gaveLine(p.status, p.coins_awarded, held);
-    tail = `<p class="done ${cls}">${esc(text)}${p.verdict_note ? ` · “${esc(p.verdict_note)}”` : ""}</p>`;
+    tail = `<p class="done ${cls}">${esc(text)}${p.verdict_note ? ` · “${esc(p.verdict_note)}”` : ""}${p.test ? " · a test, so nothing changed" : ""}</p>`;
   }
   return `<article class="card" id="card-${esc(p.id)}">
     <div class="title">${esc(p.title)}</div>
-    <div class="when">Finished ${esc(when(p.done_at))} · ${Number(p.coins_held) || 0} min of dessert riding on it</div>
-    ${photo}${screen}${none}${note}${tail}</article>`;
+    <div class="when">Finished ${esc(when(p.done_at))} · ${p.test ? "in a real one, " : ""}${Number(p.coins_held) || 0} min of dessert ${p.test ? "would ride" : "riding"} on it</div>
+    ${test}${photo}${screen}${none}${note}${tail}</article>`;
 }
 
 async function onVerdict(e) {
@@ -280,7 +296,8 @@ async function onVerdict(e) {
   buttons.forEach((b) => b.disabled = true);
   try {
     const r = await call({ action: "verdict", token, proof_id: id, award, note: ($("note-" + id)?.value || "").trim() });
-    const [cls, text] = gaveLine(r.status, r.award, r.held);
+    const [cls, said] = gaveLine(r.status, r.award, r.held);
+    const text = said + (testIDs.has(id) ? " · a test, so nothing changed" : "");
     card.querySelector("textarea")?.remove();
     card.querySelector(".award")?.remove();
     card.querySelector(".send")?.remove();
