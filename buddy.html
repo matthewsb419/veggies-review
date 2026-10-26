@@ -44,6 +44,12 @@ h2 { font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spa
 .card .title { font-weight: 800; font-size: 1.1rem; overflow-wrap: anywhere; }
 .card .when { color: var(--muted); font-size: 0.9rem; margin-top: 2px; }
 .card img { display: block; width: 100%; height: auto; max-height: 70vh; object-fit: contain; border-radius: 12px; margin-top: 12px; background: var(--soft); }
+.card video { display: block; width: 100%; height: auto; max-height: 70vh; border-radius: 12px; margin-top: 12px; background: #000; }
+.card audio { display: block; width: 100%; margin-top: 10px; }
+.card .media-line { color: var(--muted); font-size: 0.9rem; margin: 6px 0 0; }
+.card .stats { margin: 12px 0 0; font-weight: 700; font-size: 1.05rem; overflow-wrap: anywhere; }
+.card .stats small { display: block; font-weight: 400; color: var(--muted); font-size: 0.9rem; margin-top: 2px; }
+.card .flag { margin: 8px 0 0; padding: 8px 12px; border-radius: 10px; background: var(--soft); color: var(--carrot-ink); font-size: 0.95rem; }
 .card .note { margin: 12px 0 0; padding: 10px 12px; background: var(--soft); border-radius: 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .card .missing { margin-top: 12px; color: var(--muted); font-size: 0.95rem; }
 .card .test { margin: 10px 0 0; padding: 8px 12px; border-radius: 10px; background: var(--soft); color: var(--muted); font-size: 0.95rem; }
@@ -119,6 +125,21 @@ const gaveLine = (status, award, held) => {
 };
 
 // A stand-in photo for the demo: the live page shows the real one, stamped by the app.
+// "20:14" from seconds; "1:02:05" past an hour.
+const clock = (secs) => { const t = Math.max(0, Math.round(Number(secs) || 0)), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60;
+  return (h ? `${h}:${String(m).padStart(2, "0")}` : String(m)) + ":" + String(s).padStart(2, "0"); };
+const atTime = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); };
+// What's under a clip: how it was cut, and how it did against the goal, from the row's details.
+function clipLines(p, d) {
+  const total = Number(d.seconds) || 0, goal = Number(d.goal_minutes) || 0;
+  let length = total ? `Recorded ${clock(total)}` : "A recording";
+  if (goal) length += d.stopped_early ? `, stopped at ${clock(total)} of a ${goal} min goal` : ` of a ${goal} min goal`;
+  const cut = Number(d.slice_every)
+    ? `Clips: ${Number(d.slice_seconds) || 2} s out of every ${Number(d.slice_every) === 60 ? "minute" : clock(d.slice_every).replace(/^0:/, "") + " min"}, from a random spot in each, across ${clock(total)}`
+    : total ? `The whole ${clock(total)}` : "";
+  const sound = p.has_sound || d.sound_seconds ? `Sound: the full ${clock(d.sound_seconds || total)}` : "No sound recorded";
+  return { length, cut, sound };
+}
 const samplePhoto = (what, when) => "data:image/svg+xml;utf8," + encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260"><rect width="400" height="260" rx="12" fill="#e4ebdf"/>` +
   `<circle cx="200" cy="112" r="46" fill="#c9d8c0"/><text x="200" y="128" font-family="-apple-system,Segoe UI,sans-serif" font-size="44" text-anchor="middle">📷</text>` +
@@ -137,6 +158,10 @@ function demoData() {
         photo_urls: [samplePhoto("The sink, after", stamp(20))] },
       { id: "demo-piano", title: "Practice piano", kind: "note", status: "pending", done_at: ago(90), coins_held: 5, note: "Twenty minutes of scales, then the Clementi." },
       { id: "demo-mail", title: "Sort the mail", kind: "none", status: "pending", done_at: ago(150), coins_held: 2, coins_forfeited: 3 },
+      { id: "demo-walk", title: "Walk the dog", kind: "route", status: "pending", done_at: ago(55), coins_held: 5,
+        details: { meters: 3700, seconds: 2460, started_at: ago(96), ended_at: ago(55) }, photo_urls: [samplePhoto("The route, on a map", stamp(55))] },
+      { id: "demo-pushups", title: "15 push-ups", kind: "clip", status: "pending", done_at: ago(40), coins_held: 3, has_sound: false,
+        details: { seconds: 24 } },
     ],
     settled: [
       { id: "demo-bed", title: "Make the bed", kind: "photo", status: "approved", done_at: ago(26 * 60), coins_held: 5, coins_awarded: 5, photo_urls: [] },
@@ -160,7 +185,7 @@ async function demoCall(body) {
     p.status = award >= held ? "approved" : award > 0 ? "partial" : "declined";
     p.coins_awarded = award; p.verdict_note = body.note || ""; p.photo_urls = [];
     d.settled.unshift(p);
-    return { status: p.status, award, held, note: p.verdict_note, photo_deleted: p.kind === "photo" };
+    return { status: p.status, award, held, note: p.verdict_note, photo_deleted: p.kind === "photo" || p.kind === "route" || (p.kind === "clip" && !!p.clip_url) };
   }
   return d;
 }
@@ -207,7 +232,7 @@ const testIDs = new Set();
 
 // What each card was drawn from, by proof id; a card is redrawn only when this changes.
 const drawn = new Map();
-const cardKey = (p) => [p.status, (p.photo_urls || []).length, p.coins_awarded ?? "", p.verdict_note || "", p.note || "", p.test ? senderName : ""].join("\u0001");
+const cardKey = (p) => [p.status, (p.photo_urls || []).length, p.clip_url ? 1 : 0, p.sound_url ? 1 : 0, p.coins_awarded ?? "", p.verdict_note || "", p.note || "", p.test ? senderName : ""].join("\u0001");
 
 function syncCards(container, list) {
   const want = new Set(list.map((p) => p.id));
@@ -246,11 +271,35 @@ function wire(root) {
 
 function card(p) {
   const urls = Array.isArray(p.photo_urls) ? p.photo_urls : (p.photo_url ? [p.photo_url] : []);
-  const photo = (p.kind === "photo" || p.kind === "screen")
-    ? (urls.length ? urls.map((u, i) => `<img src="${esc(u)}" alt="Proof photo ${i + 1} of ${urls.length} for ${esc(p.title)}" loading="lazy">`).join("")
+  const d = p.details && typeof p.details === "object" ? p.details : {};
+  // A clip: the slices as a video, the whole session's sound under it. Either file can
+  // still be on its way from the phone; the page refreshes until both are here.
+  let clip = "";
+  if (p.kind === "clip") {
+    const l = clipLines(p, d);
+    const video = p.clip_url
+      ? `<video controls playsinline preload="metadata" src="${esc(p.clip_url)}" aria-label="The video proof for ${esc(p.title)}"></video><p class="media-line">${esc(l.cut)}</p>`
+      : `<p class="missing">${p.status === "pending" ? "The video hasn't arrived from the phone yet." : "The video has been deleted."}</p>`;
+    const sound = p.sound_url
+      ? `<audio controls preload="none" src="${esc(p.sound_url)}" aria-label="The sound of the whole session for ${esc(p.title)}"></audio><p class="media-line">${esc(l.sound)}</p>`
+      : p.has_sound ? `<p class="missing">${p.status === "pending" ? "The sound hasn't arrived from the phone yet." : "The sound has been deleted."}</p>` : `<p class="media-line">${esc(l.sound)}</p>`;
+    clip = `<p class="stats">${esc(l.length)}<small>Recorded in the app, not from the library. Each slice is stamped with its time.</small></p>${video}${sound}`;
+  }
+  // A route: the map picture rides along as the photo; the numbers come from the phone.
+  let route = "";
+  if (p.kind === "route") {
+    const meters = Number(d.meters) || 0, secs = Number(d.seconds) || 0, miles = meters / 1609.344;
+    const pace = miles > 0.05 && secs ? `${clock(secs / miles)} a mile` : "";
+    const span = d.started_at && d.ended_at ? `${atTime(d.started_at)} to ${atTime(d.ended_at)}` : "";
+    const parts = [miles ? `${miles.toFixed(miles < 10 ? 1 : 0)} mi` : "", secs ? `${Math.round(secs / 60)} min` : "", span, pace].filter(Boolean);
+    const flags = [d.fast ? "Part of this moved faster than a run (a car, a bike, a bus?)." : "", d.short ? "A very short route: under 100 m." : ""].filter(Boolean);
+    route = `<p class="stats">${esc(parts.join(" · ") || "A route")}<small>Recorded by the phone's own location, in the app.</small></p>` + flags.map((f) => `<p class="flag">⚠️ ${esc(f)}</p>`).join("");
+  }
+  const photo = (p.kind === "photo" || p.kind === "screen" || p.kind === "route")
+    ? (urls.length ? urls.map((u, i) => `<img src="${esc(u)}" alt="${p.kind === "route" ? `The map of the route for ${esc(p.title)}` : `Proof photo ${i + 1} of ${urls.length} for ${esc(p.title)}`}" loading="lazy">`).join("")
        // A test has no photo from a phone: a sample stands in while it waits.
        : p.test ? (p.status === "pending" ? `<img src="${samplePhoto("The bed, made (a sample)", when(p.done_at))}" alt="A sample photo, standing in for the one a real proof would have">` : "")
-                : `<p class="missing">${p.status === "pending" ? "The photos haven't arrived from the phone yet." : "The photos have been deleted."}</p>`)
+                : `<p class="missing">${p.kind === "route" ? (p.status === "pending" ? "The map hasn't arrived from the phone yet." : "The map has been deleted.") : p.status === "pending" ? "The photos haven't arrived from the phone yet." : "The photos have been deleted."}</p>`)
     : "";
   const test = p.test
     ? `<p class="test">🧪 A test from ${esc(senderName)}: nothing rides on this one. Answer it like a real one and their phone will say you did.</p>`
@@ -276,7 +325,7 @@ function card(p) {
         <div class="chips"><button type="button" data-set="0" data-id="${id}">None</button><button type="button" data-set="half" data-id="${id}">Half</button><button type="button" data-set="all" data-id="${id}">All</button></div>
       </div>
       <textarea placeholder="Why, in a line (optional): “Had to re-wash two dishes”" aria-label="A note back about ${esc(p.title)}, optional" maxlength="300" id="note-${id}"></textarea>
-      <button class="send" data-send="${id}">Send verdict</button>
+      <button class="send" data-send="${id}" data-kind="${esc(p.kind)}">Send verdict</button>
       <p class="err" id="err-${id}" aria-live="polite"></p>`;
   } else {
     const [cls, text] = gaveLine(p.status, p.coins_awarded, held);
@@ -285,7 +334,7 @@ function card(p) {
   return `<article class="card" id="card-${esc(p.id)}">
     <div class="title">${esc(p.title)}</div>
     <div class="when">Finished ${esc(when(p.done_at))} · ${p.test ? "in a real one, " : ""}${Number(p.coins_held) || 0} min of dessert ${p.test ? "would ride" : "riding"} on it</div>
-    ${test}${photo}${screen}${none}${note}${tail}</article>`;
+    ${test}${clip}${route}${photo}${screen}${none}${note}${tail}</article>`;
 }
 
 async function onVerdict(e) {
@@ -303,7 +352,7 @@ async function onVerdict(e) {
     card.querySelector(".send")?.remove();
     card.querySelector(".err")?.remove();
     card.querySelectorAll("img").forEach((img) => img.remove());
-    card.insertAdjacentHTML("beforeend", `<p class="done ${cls}" role="status">${esc(text)}${r.photo_deleted ? " · the photos have been deleted" : ""}${r.note ? ` · “${esc(r.note)}”` : ""}</p>`);
+    card.insertAdjacentHTML("beforeend", `<p class="done ${cls}" role="status">${esc(text)}${r.photo_deleted ? (btn.dataset.kind === "clip" ? " · the video and sound have been deleted" : btn.dataset.kind === "route" ? " · the map has been deleted" : " · the photos have been deleted") : ""}${r.note ? ` · “${esc(r.note)}”` : ""}</p>`);
     if (r.already) card.querySelector(".done").textContent = "This one was already settled: " + text.toLowerCase();
     // Then the fresh list, which moves the card to "Already answered" and redoes the lede.
     try { render(await call({ action: "list", token })); } catch {}
