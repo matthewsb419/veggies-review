@@ -129,13 +129,15 @@ const gaveLine = (status, award, held) => {
 const clock = (secs) => { const t = Math.max(0, Math.round(Number(secs) || 0)), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60;
   return (h ? `${h}:${String(m).padStart(2, "0")}` : String(m)) + ":" + String(s).padStart(2, "0"); };
 const atTime = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); };
+// "minute", "30 s", "2 min", "2 min 9 s": the window each glimpse comes from.
+const everyLabel = (s) => s === 60 ? "minute" : s < 60 ? `${s} s` : s % 60 === 0 ? `${s / 60} min` : `${Math.floor(s / 60)} min ${s % 60} s`;
 // What's under a clip: how it was cut, and how it did against the goal, from the row's details.
 function clipLines(p, d) {
   const total = Number(d.seconds) || 0, goal = Number(d.goal_minutes) || 0;
   let length = total ? `Recorded ${clock(total)}` : "A recording";
   if (goal) length += d.stopped_early ? `, stopped at ${clock(total)} of a ${goal} min goal` : ` of a ${goal} min goal`;
   const cut = Number(d.slice_every)
-    ? `Clips: ${Number(d.slice_seconds) || 2} s out of every ${Number(d.slice_every) === 60 ? "minute" : clock(d.slice_every).replace(/^0:/, "") + " min"}, from a random spot in each, across ${clock(total)}`
+    ? `Clips: ${Number(d.slice_seconds) || 2} s out of every ${everyLabel(Number(d.slice_every))}, from a random spot in each, across ${clock(total)}`
     : total ? `The whole ${clock(total)}` : "";
   const sound = p.has_sound || d.sound_seconds ? `Sound: the full ${clock(d.sound_seconds || total)}` : "No sound recorded";
   return { length, cut, sound };
