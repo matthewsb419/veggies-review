@@ -293,12 +293,14 @@ function card(p) {
     const meters = Number(d.meters) || 0, secs = Number(d.seconds) || 0, miles = meters / 1609.344;
     const pace = miles > 0.05 && secs ? `${clock(secs / miles)} a mile` : "";
     const span = d.started_at && d.ended_at ? `${atTime(d.started_at)} to ${atTime(d.ended_at)}` : "";
-    const parts = [miles ? `${miles.toFixed(miles < 10 ? 1 : 0)} mi` : "", secs ? `${Math.round(secs / 60)} min` : "", span, pace].filter(Boolean);
+    // Several routes for one veggie (up to 4, each its own map): the numbers are added up.
+    const routes = Number(d.routes) || 1;
+    const parts = [routes > 1 ? `${routes} routes` : "", miles ? `${miles.toFixed(miles < 10 ? 1 : 0)} mi` : "", secs ? `${Math.round(secs / 60)} min` : "", span, pace].filter(Boolean);
     const flags = [d.fast ? "Part of this moved faster than a run (a car, a bike, a bus?)." : "", d.short ? "A very short route: under 100 m." : ""].filter(Boolean);
     route = `<p class="stats">${esc(parts.join(" · ") || "A route")}<small>Recorded by the phone's own location, in the app.</small></p>` + flags.map((f) => `<p class="flag">⚠️ ${esc(f)}</p>`).join("");
   }
   const photo = (p.kind === "photo" || p.kind === "screen" || p.kind === "route")
-    ? (urls.length ? urls.map((u, i) => `<img src="${esc(u)}" alt="${p.kind === "route" ? `The map of the route for ${esc(p.title)}` : `Proof photo ${i + 1} of ${urls.length} for ${esc(p.title)}`}" loading="lazy">`).join("")
+    ? (urls.length ? urls.map((u, i) => `<img src="${esc(u)}" alt="${p.kind === "route" ? (urls.length > 1 ? `Map ${i + 1} of ${urls.length} of the routes for ${esc(p.title)}` : `The map of the route for ${esc(p.title)}`) : `Proof photo ${i + 1} of ${urls.length} for ${esc(p.title)}`}" loading="lazy">`).join("")
        // A test has no photo from a phone: a sample stands in while it waits.
        : p.test ? (p.status === "pending" ? `<img src="${samplePhoto("The bed, made (a sample)", when(p.done_at))}" alt="A sample photo, standing in for the one a real proof would have">` : "")
                 : `<p class="missing">${p.kind === "route" ? (p.status === "pending" ? "The map hasn't arrived from the phone yet." : "The map has been deleted.") : p.status === "pending" ? "The photos haven't arrived from the phone yet." : "The photos have been deleted."}</p>`)
