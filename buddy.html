@@ -134,6 +134,11 @@ const everyLabel = (s) => s === 60 ? "minute" : s < 60 ? `${s} s` : s % 60 === 0
 // What's under a clip: how it was cut, and how it did against the goal, from the row's details.
 function clipLines(p, d) {
   const total = Number(d.seconds) || 0, goal = Number(d.goal_minutes) || 0;
+  // A short video: up to a minute, kept whole, its sound inside the video.
+  if (d.short_video) {
+    return { length: total ? `A short video, ${clock(total)}` : "A short video", cut: "The whole recording",
+             sound: d.has_sound ? "Its sound plays with the video" : "No sound recorded", short: true };
+  }
   let length = total ? `Recorded ${clock(total)}` : "A recording";
   if (goal) length += d.stopped_early ? `, stopped at ${clock(total)} of a ${goal} min goal` : ` of a ${goal} min goal`;
   const cut = Number(d.slice_every)
@@ -282,10 +287,10 @@ function card(p) {
     const video = p.clip_url
       ? `<video controls playsinline preload="metadata" src="${esc(p.clip_url)}" aria-label="The video proof for ${esc(p.title)}"></video><p class="media-line">${esc(l.cut)}</p>`
       : `<p class="missing">${p.status === "pending" ? "The video hasn't arrived from the phone yet." : "The video has been deleted."}</p>`;
-    const sound = p.sound_url
+    const sound = l.short ? `<p class="media-line">${esc(l.sound)}</p>` : p.sound_url
       ? `<audio controls preload="none" src="${esc(p.sound_url)}" aria-label="The sound of the whole session for ${esc(p.title)}"></audio><p class="media-line">${esc(l.sound)}</p>`
       : p.has_sound ? `<p class="missing">${p.status === "pending" ? "The sound hasn't arrived from the phone yet." : "The sound has been deleted."}</p>` : `<p class="media-line">${esc(l.sound)}</p>`;
-    clip = `<p class="stats">${esc(l.length)}<small>Recorded in the app, not from the library. Each slice is stamped with its time.</small></p>${video}${sound}`;
+    clip = `<p class="stats">${esc(l.length)}<small>Recorded in the app, not from the library. Each ${l.short ? "frame" : "slice"} is stamped with its time.</small></p>${video}${sound}`;
   }
   // A route: the map picture rides along as the photo; the numbers come from the phone.
   let route = "";
