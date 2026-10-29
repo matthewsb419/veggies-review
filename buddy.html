@@ -49,6 +49,15 @@ h2 { font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spa
 .card .media-line { color: var(--muted); font-size: 0.9rem; margin: 6px 0 0; }
 .card .stats { margin: 12px 0 0; font-weight: 700; font-size: 1.05rem; overflow-wrap: anywhere; }
 .card .stats small { display: block; font-weight: 400; color: var(--muted); font-size: 0.9rem; margin-top: 2px; }
+/* The goal they set, met or not, at the top of the card: the one thing to see at a glance. */
+.card .goal { margin: 12px 0 0; padding: 12px 14px; border-radius: 12px; display: flex; gap: 12px; align-items: center; }
+.card .goal .mark { flex: none; width: 2.2rem; height: 2.2rem; border-radius: 50%; display: grid; place-items: center; font-size: 1.2rem; font-weight: 900; }
+.card .goal b { display: block; font-size: 1.2rem; font-weight: 900; letter-spacing: 0.01em; }
+.card .goal span { display: block; font-size: 0.95rem; margin-top: 1px; }
+.card .goal.reached { background: var(--sage); color: var(--sage-ink); }
+.card .goal.reached .mark { background: var(--sage-ink); color: var(--sage); }
+.card .goal.short { background: var(--soft); color: var(--carrot-ink); box-shadow: inset 0 0 0 2px var(--carrot); }
+.card .goal.short .mark { background: var(--carrot); color: var(--panel); }
 .card .flag { margin: 8px 0 0; padding: 8px 12px; border-radius: 10px; background: var(--soft); color: var(--carrot-ink); font-size: 0.95rem; }
 .card .note { margin: 12px 0 0; padding: 10px 12px; background: var(--soft); border-radius: 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .card .missing { margin-top: 12px; color: var(--muted); font-size: 0.95rem; }
@@ -140,12 +149,36 @@ function clipLines(p, d) {
              sound: d.has_sound ? "Its sound plays with the video" : "No sound recorded", short: true };
   }
   let length = total ? `Recorded ${clock(total)}` : "A recording";
-  if (goal) length += d.stopped_early ? `, stopped at ${clock(total)} of a ${goal} min goal` : ` of a ${goal} min goal`;
+  if (goal) length += d.stopped_early ? `, short of a ${goal} min goal` : ` · ${goal} min goal reached`;
   const cut = Number(d.slice_every)
     ? `Clips: ${Number(d.slice_seconds) || 2} s out of every ${everyLabel(Number(d.slice_every))}, from a random spot in each, across ${clock(total)}`
     : total ? `The whole ${clock(total)}` : "";
   const sound = p.has_sound || d.sound_seconds ? `Sound: the full ${clock(d.sound_seconds || total)}` : "No sound recorded";
   return { length, cut, sound };
+}
+// The goal they set before recording (a long video's minutes, a route's distance and
+// time), against what came in: { reached, target, actual }, or null without a goal.
+// Nothing on the phone checks it; this is for the reviewer to see at a glance.
+function goalCheck(p, d) {
+  const secs = Number(d.seconds) || 0, meters = Number(d.meters) || 0;
+  const goalMinutes = Number(d.goal_minutes) || 0, goalMeters = Number(d.goal_meters) || 0;
+  const mi = (m) => `${+(m / 1609.344).toFixed(2)} mi`;
+  if (p.kind === "clip" && !d.short_video && goalMinutes) {
+    return { reached: secs >= goalMinutes * 60, target: `${goalMinutes} min`, actual: `recorded ${clock(secs)}` };
+  }
+  if (p.kind === "route" && (goalMinutes || goalMeters)) {
+    const target = [goalMeters ? mi(goalMeters) : "", goalMinutes ? `${goalMinutes} min` : ""].filter(Boolean).join(" and ");
+    return { reached: (!goalMeters || meters >= goalMeters) && (!goalMinutes || secs >= goalMinutes * 60),
+             target, actual: `walked ${mi(meters)} in ${Math.round(secs / 60)} min` };
+  }
+  return null;
+}
+function goalBadge(p, d) {
+  const g = goalCheck(p, d);
+  if (!g) return "";
+  return `<div class="goal ${g.reached ? "reached" : "short"}" data-goal="${g.reached ? "reached" : "short"}" role="note">
+    <div class="mark" aria-hidden="true">${g.reached ? "✓" : "!"}</div>
+    <div><b>${g.reached ? "Goal reached" : "Short of the goal"}</b><span>Goal ${esc(g.target)} · ${esc(g.actual)}</span></div></div>`;
 }
 const samplePhoto = (what, when) => "data:image/svg+xml;utf8," + encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260"><rect width="400" height="260" rx="12" fill="#e4ebdf"/>` +
@@ -166,9 +199,11 @@ function demoData() {
       { id: "demo-piano", title: "Practice piano", kind: "note", status: "pending", done_at: ago(90), coins_held: 5, note: "Twenty minutes of scales, then the Clementi." },
       { id: "demo-mail", title: "Sort the mail", kind: "none", status: "pending", done_at: ago(150), coins_held: 2, coins_forfeited: 3 },
       { id: "demo-walk", title: "Walk the dog", kind: "route", status: "pending", done_at: ago(55), coins_held: 5,
-        details: { meters: 3700, seconds: 2460, started_at: ago(96), ended_at: ago(55) }, photo_urls: [samplePhoto("The route, on a map", stamp(55))] },
+        details: { meters: 3700, seconds: 2460, started_at: ago(96), ended_at: ago(55), goal_meters: 4023, goal_minutes: 30 }, photo_urls: [samplePhoto("The route, on a map", stamp(55))] },
       { id: "demo-pushups", title: "15 push-ups", kind: "clip", status: "pending", done_at: ago(40), coins_held: 3, has_sound: false,
         details: { seconds: 24 } },
+      { id: "demo-guitar", title: "Practice guitar", kind: "clip", status: "pending", done_at: ago(70), coins_held: 5, has_sound: true,
+        details: { seconds: 1452, goal_minutes: 20, slice_seconds: 2, slice_every: 60, opening_seconds: 60, sound_seconds: 1452 } },
     ],
     settled: [
       { id: "demo-bed", title: "Make the bed", kind: "photo", status: "approved", done_at: ago(26 * 60), coins_held: 5, coins_awarded: 5, photo_urls: [] },
@@ -343,7 +378,7 @@ function card(p) {
   return `<article class="card" id="card-${esc(p.id)}">
     <div class="title">${esc(p.title)}</div>
     <div class="when">Finished ${esc(when(p.done_at))} · ${p.test ? "in a real one, " : ""}${Number(p.coins_held) || 0} min of dessert ${p.test ? "would ride" : "riding"} on it</div>
-    ${test}${clip}${route}${photo}${screen}${none}${note}${tail}</article>`;
+    ${goalBadge(p, d)}${test}${clip}${route}${photo}${screen}${none}${note}${tail}</article>`;
 }
 
 async function onVerdict(e) {
