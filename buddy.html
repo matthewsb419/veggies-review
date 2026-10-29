@@ -166,7 +166,7 @@ function demoData() {
       { id: "demo-piano", title: "Practice piano", kind: "note", status: "pending", done_at: ago(90), coins_held: 5, note: "Twenty minutes of scales, then the Clementi." },
       { id: "demo-mail", title: "Sort the mail", kind: "none", status: "pending", done_at: ago(150), coins_held: 2, coins_forfeited: 3 },
       { id: "demo-walk", title: "Walk the dog", kind: "route", status: "pending", done_at: ago(55), coins_held: 5,
-        details: { meters: 3700, seconds: 2460, started_at: ago(96), ended_at: ago(55) }, photo_urls: [samplePhoto("The route, on a map", stamp(55))] },
+        details: { meters: 3700, seconds: 2460, started_at: ago(96), ended_at: ago(55), goal_meters: 3219, goal_minutes: 30 }, photo_urls: [samplePhoto("The route, on a map", stamp(55))] },
       { id: "demo-pushups", title: "15 push-ups", kind: "clip", status: "pending", done_at: ago(40), coins_held: 3, has_sound: false,
         details: { seconds: 24 } },
     ],
@@ -302,7 +302,16 @@ function card(p) {
     const routes = Number(d.routes) || 1;
     const parts = [routes > 1 ? `${routes} routes` : "", miles ? `${miles.toFixed(miles < 10 ? 1 : 0)} mi` : "", secs ? `${Math.round(secs / 60)} min` : "", span, pace].filter(Boolean);
     const flags = [d.fast ? "Part of this moved faster than a run (a car, a bike, a bus?)." : "", d.short ? "A very short route: under 100 m." : ""].filter(Boolean);
-    route = `<p class="stats">${esc(parts.join(" · ") || "A route")}<small>Recorded by the phone's own location, in the app.</small></p>` + flags.map((f) => `<p class="flag">⚠️ ${esc(f)}</p>`).join("");
+    // The goal they set before the walk, if any: nothing checked it, so it's shown beside
+    // the numbers for the reviewer to weigh.
+    const goalMeters = Number(d.goal_meters) || 0, goalMinutes = Number(d.goal_minutes) || 0;
+    const goalMiles = goalMeters / 1609.344;
+    const goalParts = [goalMeters ? `${+goalMiles.toFixed(2)} mi` : "", goalMinutes ? `${goalMinutes} min` : ""].filter(Boolean);
+    const reached = (!goalMeters || meters >= goalMeters) && (!goalMinutes || secs >= goalMinutes * 60);
+    const goal = goalParts.length
+      ? `<p class="media-line">🎯 Their goal: at least ${esc(goalParts.join(" and "))}. ${reached ? "The numbers above reach it." : "The numbers above fall short of it."} Your call either way.</p>`
+      : "";
+    route = `<p class="stats">${esc(parts.join(" · ") || "A route")}<small>Recorded by the phone's own location, in the app.</small></p>` + goal + flags.map((f) => `<p class="flag">⚠️ ${esc(f)}</p>`).join("");
   }
   const photo = (p.kind === "photo" || p.kind === "screen" || p.kind === "route")
     ? (urls.length ? urls.map((u, i) => `<img src="${esc(u)}" alt="${p.kind === "route" ? (urls.length > 1 ? `Map ${i + 1} of ${urls.length} of the routes for ${esc(p.title)}` : `The map of the route for ${esc(p.title)}`) : `Proof photo ${i + 1} of ${urls.length} for ${esc(p.title)}`}" loading="lazy">`).join("")
