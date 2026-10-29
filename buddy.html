@@ -199,7 +199,7 @@ function demoData() {
       { id: "demo-piano", title: "Practice piano", kind: "note", status: "pending", done_at: ago(90), coins_held: 5, note: "Twenty minutes of scales, then the Clementi." },
       { id: "demo-mail", title: "Sort the mail", kind: "none", status: "pending", done_at: ago(150), coins_held: 2, coins_forfeited: 3 },
       { id: "demo-walk", title: "Walk the dog", kind: "route", status: "pending", done_at: ago(55), coins_held: 5,
-        details: { meters: 3700, seconds: 2460, started_at: ago(96), ended_at: ago(55), goal_meters: 4023, goal_minutes: 30 }, photo_urls: [samplePhoto("The route, on a map", stamp(55))] },
+        details: { meters: 3700, seconds: 2460, started_at: ago(96), ended_at: ago(55), goal_meters: 4023, goal_minutes: 30, steps: 4870 }, photo_urls: [samplePhoto("The route, on a map", stamp(55))] },
       { id: "demo-pushups", title: "15 push-ups", kind: "clip", status: "pending", done_at: ago(40), coins_held: 3, has_sound: false,
         details: { seconds: 24 } },
       { id: "demo-guitar", title: "Practice guitar", kind: "clip", status: "pending", done_at: ago(70), coins_held: 5, has_sound: true,
@@ -335,9 +335,11 @@ function card(p) {
     const span = d.started_at && d.ended_at ? `${atTime(d.started_at)} to ${atTime(d.ended_at)}` : "";
     // Several routes for one veggie (up to 4, each its own map): the numbers are added up.
     const routes = Number(d.routes) || 1;
-    const parts = [routes > 1 ? `${routes} routes` : "", miles ? `${miles.toFixed(miles < 10 ? 1 : 0)} mi` : "", secs ? `${Math.round(secs / 60)} min` : "", span, pace].filter(Boolean);
+    // Steps: counted by the phone's motion sensor from Start to Stop; absent when it couldn't.
+    const steps = Number(d.steps) > 0 ? `${Number(d.steps).toLocaleString()} ${Number(d.steps) === 1 ? "step" : "steps"}` : "";
+    const parts = [routes > 1 ? `${routes} routes` : "", miles ? `${miles.toFixed(miles < 10 ? 1 : 0)} mi` : "", secs ? `${Math.round(secs / 60)} min` : "", span, pace, steps].filter(Boolean);
     const flags = [d.fast ? "Part of this moved faster than a run (a car, a bike, a bus?)." : "", d.short ? "A very short route: under 100 m." : ""].filter(Boolean);
-    route = `<p class="stats">${esc(parts.join(" · ") || "A route")}<small>Recorded by the phone's own location, in the app.</small></p>` + flags.map((f) => `<p class="flag">⚠️ ${esc(f)}</p>`).join("");
+    route = `<p class="stats">${esc(parts.join(" · ") || "A route")}<small>Recorded by the phone's own location, in the app${steps ? "; the steps by its motion sensor" : ""}.</small></p>` + flags.map((f) => `<p class="flag">⚠️ ${esc(f)}</p>`).join("");
   }
   const photo = (p.kind === "photo" || p.kind === "screen" || p.kind === "route")
     ? (urls.length ? urls.map((u, i) => `<img src="${esc(u)}" alt="${p.kind === "route" ? (urls.length > 1 ? `Map ${i + 1} of ${urls.length} of the routes for ${esc(p.title)}` : `The map of the route for ${esc(p.title)}`) : `Proof photo ${i + 1} of ${urls.length} for ${esc(p.title)}`}" loading="lazy">`).join("")
