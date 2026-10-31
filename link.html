@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex">
+<meta property="og:title" content="Veggies First: be someone's accountability buddy">
+<meta property="og:description" content="A friend wants you to review their proofs in Veggies First. One tap links your apps.">
+<meta property="og:type" content="website">
+<title>Veggies First · Link with a friend</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800&display=swap">
+<style>
+:root {
+  --bg: #f6f7f3; --panel: #ffffff; --fg: #22301f; --muted: #6b7a66; --line: #dde3d6;
+  --sage: #4e8a5a; --sage-ink: #ffffff; --soft: #eef2ea;
+  --font: "Nunito", -apple-system, "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #171b15; --panel: #202619; --fg: #e9eee4; --muted: #9aa893; --line: #333d2e;
+    --sage: #7cbf88; --sage-ink: #10180f; --soft: #27301f; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #171b15; --panel: #202619; --fg: #e9eee4; --muted: #9aa893; --line: #333d2e;
+  --sage: #7cbf88; --sage-ink: #10180f; --soft: #27301f; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--fg); font: 17px/1.45 var(--font); }
+body { padding: 0 max(16px, env(safe-area-inset-left, 0px)) calc(40px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-right, 0px)); }
+main { max-width: 480px; margin: 0 auto; padding-top: max(32px, env(safe-area-inset-top, 0px)); text-align: center; }
+.mark { font-size: 56px; line-height: 1; }
+h1 { font-size: 1.5rem; font-weight: 800; margin: 12px 0 6px; letter-spacing: -0.01em; text-wrap: balance; }
+.lede { color: var(--muted); margin: 0 0 24px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 20px; margin: 0 0 16px; }
+.button { display: block; width: 100%; padding: 16px; border: 0; border-radius: 14px; background: var(--sage); color: var(--sage-ink); font: 700 1.05rem var(--font); text-decoration: none; cursor: pointer; }
+.code { font: 800 2rem/1.1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.25em; margin: 10px 0 4px; }
+.hint { color: var(--muted); font-size: 0.92rem; margin: 10px 0 0; }
+.small { color: var(--muted); font-size: 0.85rem; }
+#missing { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <div class="mark" aria-hidden="true">🥕</div>
+  <h1>Be someone's accountability buddy</h1>
+  <p class="lede">A friend set you up as their reviewer in Veggies First. Since you have the app too, their proofs can come straight to it, and your OK goes straight back.</p>
+
+  <div class="card" id="has-code">
+    <a class="button" id="open" href="#">Open in Veggies First</a>
+    <p class="hint">Opens the app with the invite ready to accept.</p>
+    <p class="small">Or type this code under Setup → Review for others → Enter a code:</p>
+    <div class="code" id="code" aria-label="The invite code"></div>
+    <p class="small">It works for a week from when it was made.</p>
+  </div>
+
+  <div class="card" id="missing">
+    <p>This link is missing its code. Ask your friend to send it again from their reviewer's editor in Veggies First (Setup → Reviewers → you → Link their app).</p>
+  </div>
+
+  <p class="small">Don't have Veggies First yet? It's on its way to the App Store. Keep this message: the link works once it's installed.</p>
+</main>
+<script>
+(function () {
+  // The code rides in the #, so it never reaches a server, not even this page's host.
+  var code = (location.hash || "").replace(/^#/, "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  var ok = /^[A-HJ-NP-Z2-9]{6}$/.test(code);
+  document.getElementById("has-code").style.display = ok ? "" : "none";
+  document.getElementById("missing").style.display = ok ? "none" : "";
+  if (!ok) return;
+  document.getElementById("code").textContent = code;
+  document.getElementById("open").href = "veggiesfirst://link/" + code;
+})();
+</script>
+</body>
+</html>
