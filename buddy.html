@@ -133,6 +133,8 @@ const token = location.hash.replace(/^#/, "").trim();
 // Demo mode (#demo, or the app's Demo menu, which hands in the names): sample tasks drawn
 // right here, verdicts kept in the page, nothing sent anywhere.
 const DEMO = token === "demo" || !!window.VBD_DEMO;
+// Which reviewer this link is (`list` says): a verdict by another reviewer of the same proof reads differently.
+let you = null;
 const demoNames = Object.assign({ sender: "Ben", buddy: "" }, typeof window.VBD_DEMO === "object" ? window.VBD_DEMO : {});
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -259,6 +261,7 @@ async function call(body) {
 function notice(text) { $("notice").textContent = text; $("notice").hidden = false; $("lede").textContent = ""; }
 
 function render(data) {
+  you = data.you || null;
   const who = data.sender ? data.sender : "Someone";
   senderName = who;
   for (const p of [...data.pending, ...data.settled]) if (p.test) testIDs.add(p.id);
@@ -396,7 +399,11 @@ function card(p) {
       <button class="send" data-send="${id}" data-kind="${esc(p.kind)}">Send verdict</button>
       <p class="err" id="err-${id}" aria-live="polite"></p>`;
   } else {
-    const [cls, text] = gaveLine(p.status, p.coins_awarded, held);
+    // A proof sent to several reviewers: the first answer settled it; if that wasn't this link's, say so.
+    const other = p.verdict_buddy_id && you && p.verdict_buddy_id !== you;
+    const [cls, text] = other
+      ? [statusOf(p.status)[0], p.coins_awarded != null && held > 0 ? `Another reviewer answered first and gave back ${p.coins_awarded} of the ${held} min held` : "Another reviewer answered first"]
+      : gaveLine(p.status, p.coins_awarded, held);
     tail = `<p class="done ${cls}">${esc(text)}${p.verdict_note ? ` · “${esc(p.verdict_note)}”` : ""}${p.test ? " · a test, so nothing changed" : ""}</p>`;
   }
   const whenLine = `<div class="when">Finished ${esc(when(p.done_at))} · ${p.test ? "in a real one, " : ""}${Number(p.coins_held) || 0} min of dessert ${p.test ? "would ride" : "riding"} on it</div>`;
