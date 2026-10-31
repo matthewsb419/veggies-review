@@ -76,10 +76,12 @@ button { font: inherit; font-weight: 800; color: var(--fg); background: var(--pa
 button.approve { background: var(--sage); border-color: var(--sage); color: var(--sage-ink); }
 button.partial { border-color: var(--carrot); color: var(--carrot-ink); }
 button.decline { border-color: var(--berry); color: var(--berry-ink); }
+/* "They didn't do it": a quiet line, not a fourth big button; it asks before it sends. */
+button.reject { display: block; width: 100%; margin-top: 10px; padding: 8px 6px; background: none; border: 1.5px dashed var(--berry); color: var(--berry-ink); font-weight: 600; font-size: 0.9rem; }
 button:disabled { opacity: 0.55; cursor: default; }
 button:focus-visible, textarea:focus-visible { outline: 2px solid var(--sage); outline-offset: 2px; }
 .done { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: var(--soft); font-weight: 600; }
-.done.approve { color: var(--sage); } .done.partial { color: var(--carrot-ink); } .done.decline { color: var(--berry-ink); }
+.done.approve { color: var(--sage); } .done.partial { color: var(--carrot-ink); } .done.decline, .done.reject { color: var(--berry-ink); }
 /* An answered task folds to one row, like a task in the app; a tap opens the whole card. */
 details.card { padding: 0; }
 details.card > summary { list-style: none; display: flex; align-items: center; gap: 10px; padding: 14px 16px; cursor: pointer; border-radius: 16px; }
@@ -90,6 +92,7 @@ details.card > summary .chip { flex: none; font-size: 0.85rem; font-weight: 800;
 details.card > summary .chip.approve { background: var(--sage); color: var(--sage-ink); }
 details.card > summary .chip.partial { color: var(--carrot-ink); box-shadow: inset 0 0 0 1.5px var(--carrot); }
 details.card > summary .chip.decline { color: var(--berry-ink); box-shadow: inset 0 0 0 1.5px var(--berry); }
+details.card > summary .chip.reject { background: var(--berry); color: var(--sage-ink); }
 details.card > summary .chev { flex: none; display: inline-block; font-size: 1.4rem; line-height: 1; color: var(--muted); }
 details.card[open] > summary .chev { transform: rotate(90deg); }
 details.card .body { padding: 0 16px 14px; }
@@ -124,7 +127,7 @@ footer { margin-top: 28px; color: var(--muted); font-size: 0.9rem; }
     <ul class="context" id="context"></ul>
   </section>
   <footer id="foot" hidden>
-    The slider is how much of the held dessert time to give back, from none to all; the task counts as done either way. A note back goes with it. Photos are deleted the moment you answer, and after <span id="keep">48</span> hours no matter what. This link stops working <span id="expires"></span>.
+    The slider is how much of the held dessert time to give back, from none to all; the task counts as done either way. If it clearly wasn't done at all, <b>They didn't do it</b> also takes back the time they were paid the moment they marked it finished. A note back goes with it. Photos are deleted the moment you answer, and after <span id="keep">48</span> hours no matter what. This link stops working <span id="expires"></span>.
   </footer>
 </main>
 <script>
@@ -140,14 +143,18 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const when = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" }); };
 const STATUS = new Map([["approved", ["approve", "You gave back all of it"]], ["partial", ["partial", "You gave back part of it"]],
-                        ["declined", ["decline", "You gave back none of it"]], ["expired", ["", "Nobody answered in time"]],
+                        ["declined", ["decline", "You gave back none of it"]], ["rejected", ["reject", "You said it wasn't done and took back what was paid"]],
+                        ["expired", ["", "Nobody answered in time"]],
                         ["withdrawn", ["", "It was taken back"]]]);
 const statusOf = (s) => STATUS.get(String(s)) || ["", "Settled"];
 // The word on a folded answered card.
-const CHIP = { approved: "✓ Approved", partial: "Partly", declined: "Declined", expired: "Expired", withdrawn: "Taken back" };
+const CHIP = { approved: "✓ Approved", partial: "Partly", declined: "Declined", rejected: "Rejected", expired: "Expired", withdrawn: "Taken back" };
 const gaveLine = (status, award, held) => {
   const [cls, text] = statusOf(status);
-  if (award == null || !(held > 0)) return [cls, text];
+  if (award == null) return [cls, text];
+  // Below zero: the coins paid up front, taken back ("they didn't do it").
+  if (award < 0) return [cls, `You said it wasn't done: took back the ${-award} min paid up front${held > 0 ? `, and none of the ${held} min held were given back` : ""}`];
+  if (!(held > 0)) return [cls, text];
   return [cls, `You gave back ${award} of the ${held} min held`];
 };
 
@@ -212,10 +219,10 @@ function demoData() {
   demo = {
     sender: demoNames.sender, keep_hours: 48, expires_at: new Date(now + 47 * 60 * min).toISOString(),
     pending: [
-      { id: "demo-sink", title: "Clean the kitchen sink", kind: "photo", status: "pending", done_at: ago(20), coins_held: 5,
+      { id: "demo-sink", title: "Clean the kitchen sink", kind: "photo", status: "pending", done_at: ago(20), coins_held: 5, coins_paid: 5,
         photo_urls: [samplePhoto("The sink, after", stamp(20))] },
-      { id: "demo-piano", title: "Practice piano", kind: "note", status: "pending", done_at: ago(90), coins_held: 5, note: "Twenty minutes of scales, then the Clementi." },
-      { id: "demo-mail", title: "Sort the mail", kind: "none", status: "pending", done_at: ago(150), coins_held: 2, coins_forfeited: 3 },
+      { id: "demo-piano", title: "Practice piano", kind: "note", status: "pending", done_at: ago(90), coins_held: 5, coins_paid: 5, note: "Twenty minutes of scales, then the Clementi." },
+      { id: "demo-mail", title: "Sort the mail", kind: "none", status: "pending", done_at: ago(150), coins_held: 2, coins_paid: 5, coins_forfeited: 3 },
       { id: "demo-walk", title: "Walk the dog", kind: "route", status: "pending", done_at: ago(55), coins_held: 5,
         details: { meters: 3700, seconds: 2460, started_at: ago(96), ended_at: ago(55), goal_meters: 4023, goal_minutes: 30, steps: 4870 }, photo_urls: [samplePhoto("The route, on a map", stamp(55))] },
       { id: "demo-pushups", title: "15 push-ups", kind: "clip", status: "pending", done_at: ago(40), coins_held: 3, has_sound: false,
@@ -241,8 +248,8 @@ async function demoCall(body) {
     const i = d.pending.findIndex((p) => p.id === body.proof_id);
     if (i < 0) return { already: true, status: "approved", award: 0, held: 0 };
     const p = d.pending.splice(i, 1)[0];
-    const held = Number(p.coins_held) || 0, award = Math.max(0, Math.min(held, Number(body.award) || 0));
-    p.status = award >= held ? "approved" : award > 0 ? "partial" : "declined";
+    const held = Number(p.coins_held) || 0, paid = Number(p.coins_paid) || 0, award = Math.max(-paid, Math.min(held, Number(body.award) || 0));
+    p.status = award < 0 ? "rejected" : award >= held ? "approved" : award > 0 ? "partial" : "declined";
     p.coins_awarded = award; p.verdict_note = body.note || ""; p.photo_urls = [];
     d.settled.unshift(p);
     return { status: p.status, award, held, note: p.verdict_note, photo_deleted: p.kind === "photo" || p.kind === "route" || (p.kind === "clip" && !!p.clip_url) };
@@ -329,7 +336,15 @@ function wire(root) {
     r.value = el.dataset.set === "0" ? 0 : el.dataset.set === "half" ? Math.ceil(Number(r.max) / 2) : r.max;
     $("amt-" + el.dataset.id).textContent = r.value;
   });
-  for (const el of root.querySelectorAll("[data-send]")) el.addEventListener("click", onVerdict);
+  for (const el of root.querySelectorAll("[data-send]")) el.addEventListener("click", (e) => {
+    const id = e.currentTarget.dataset.send;
+    sendVerdict(id, Number($("range-" + id).value), e.currentTarget.dataset.kind);
+  });
+  for (const el of root.querySelectorAll("[data-reject]")) el.addEventListener("click", (e) => {
+    const { reject: id, paid, kind } = e.currentTarget.dataset;
+    if (!confirm(`Take back the ${paid} min they were already paid?\n\nFor when it clearly wasn't done. None of the held time is given back either, and your note goes with it.`)) return;
+    sendVerdict(id, -Number(paid), kind);
+  });
   if (root.tagName === "DETAILS") root.addEventListener("toggle", () => {
     const id = root.id.replace(/^card-/, "");
     if (root.open) opened.add(id); else opened.delete(id);
@@ -382,6 +397,8 @@ function card(p) {
   const note = p.note ? `<p class="note">“${esc(p.note)}”</p>` : "";
   let tail;
   const held = Number(p.coins_held) || 0;
+  // Paid the moment they marked it finished; "They didn't do it" takes it back.
+  const paid = Number(p.coins_paid) || 0;
   const gone = Number(p.coins_forfeited) || 0;
   // "I forgot the proof": nothing to look at, and less riding on it.
   const none = p.kind === "none"
@@ -394,6 +411,7 @@ function card(p) {
         <input type="range" id="range-${id}" min="0" max="${held}" step="1" value="${held}" aria-label="How much of the ${held} min held to give back">
         <div class="ends"><span>None</span><span>Half</span><span>All</span></div>
         <div class="chips"><button type="button" data-set="0" data-id="${id}">None</button><button type="button" data-set="half" data-id="${id}">Half</button><button type="button" data-set="all" data-id="${id}">All</button></div>
+        ${paid > 0 ? `<button type="button" class="reject" data-reject="${id}" data-paid="${paid}" data-kind="${esc(p.kind)}">They didn't do it: take back the ${paid} min already paid</button>` : ""}
       </div>
       <textarea placeholder="Why, in a line (optional): “Had to re-wash two dishes”" aria-label="A note back about ${esc(p.title)}, optional" maxlength="300" id="note-${id}"></textarea>
       <button class="send" data-send="${id}" data-kind="${esc(p.kind)}">Send verdict</button>
@@ -402,7 +420,8 @@ function card(p) {
     // A proof sent to several reviewers: the first answer settled it; if that wasn't this link's, say so.
     const other = p.verdict_buddy_id && you && p.verdict_buddy_id !== you;
     const [cls, text] = other
-      ? [statusOf(p.status)[0], p.coins_awarded != null && held > 0 ? `Another reviewer answered first and gave back ${p.coins_awarded} of the ${held} min held` : "Another reviewer answered first"]
+      ? [statusOf(p.status)[0], p.coins_awarded < 0 ? `Another reviewer answered first: they said it wasn't done and took back the ${-p.coins_awarded} min paid up front`
+         : p.coins_awarded != null && held > 0 ? `Another reviewer answered first and gave back ${p.coins_awarded} of the ${held} min held` : "Another reviewer answered first"]
       : gaveLine(p.status, p.coins_awarded, held);
     tail = `<p class="done ${cls}">${esc(text)}${p.verdict_note ? ` · “${esc(p.verdict_note)}”` : ""}${p.test ? " · a test, so nothing changed" : ""}</p>`;
   }
@@ -420,10 +439,9 @@ function card(p) {
     ${body}</article>`;
 }
 
-async function onVerdict(e) {
-  const btn = e.currentTarget, id = btn.dataset.send;
+// Send (the slider's amount) and "They didn't do it" (minus what was paid) both land here.
+async function sendVerdict(id, award, kind) {
   const card = $("card-" + id);
-  const award = Number($("range-" + id).value);
   const buttons = card.querySelectorAll("button");
   buttons.forEach((b) => b.disabled = true);
   try {
@@ -435,7 +453,7 @@ async function onVerdict(e) {
     card.querySelector(".send")?.remove();
     card.querySelector(".err")?.remove();
     card.querySelectorAll("img").forEach((img) => img.remove());
-    card.insertAdjacentHTML("beforeend", `<p class="done ${cls}" role="status">${esc(text)}${r.photo_deleted ? (btn.dataset.kind === "clip" ? " · the video and sound have been deleted" : btn.dataset.kind === "route" ? " · the map has been deleted" : " · the photos have been deleted") : ""}${r.note ? ` · “${esc(r.note)}”` : ""}</p>`);
+    card.insertAdjacentHTML("beforeend", `<p class="done ${cls}" role="status">${esc(text)}${r.photo_deleted ? (kind === "clip" ? " · the video and sound have been deleted" : kind === "route" ? " · the map has been deleted" : " · the photos have been deleted") : ""}${r.note ? ` · “${esc(r.note)}”` : ""}</p>`);
     if (r.already) card.querySelector(".done").textContent = "This one was already settled: " + text.toLowerCase();
     // Then the fresh list, which moves the card to "Already answered" and redoes the lede.
     try { render(await call({ action: "list", token })); } catch {}
