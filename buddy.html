@@ -44,6 +44,18 @@ h2 { font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spa
 .card .title { font-weight: 800; font-size: 1.1rem; overflow-wrap: anywhere; }
 .card .when { color: var(--muted); font-size: 0.9rem; margin-top: 2px; }
 .card img { display: block; width: 100%; height: auto; max-height: 70vh; object-fit: contain; border-radius: 12px; margin-top: 12px; background: var(--soft); }
+/* Several photos: side by side, one at a time, the next peeking in from the edge; "1 of 3",
+   dots and arrows under it say where you are. */
+.card .photos { margin-top: 12px; }
+.card .photos .strip { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; border-radius: 12px; }
+.card .photos .strip::-webkit-scrollbar { display: none; }
+.card .photos .strip img { flex: 0 0 88%; width: 88%; scroll-snap-align: start; margin-top: 0; max-height: 60vh; }
+.card .photos .pager { display: flex; align-items: center; gap: 10px; margin-top: 8px; color: var(--muted); font-size: 0.9rem; }
+.card .photos .count { font-weight: 700; color: var(--fg); min-width: 3.5em; }
+.card .photos .dots { display: flex; gap: 6px; flex: 1; }
+.card .photos .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+.card .photos .dots i.on { background: var(--sage); }
+.card .photos .arrow { flex: none; width: 36px; height: 36px; padding: 0; border-radius: 50%; font-size: 1.4rem; line-height: 1; font-weight: 600; background: var(--soft); }
 .card video { display: block; width: 100%; height: auto; max-height: 70vh; border-radius: 12px; margin-top: 12px; background: #000; }
 .card audio { display: block; width: 100%; margin-top: 10px; }
 .card .media-line { color: var(--muted); font-size: 0.9rem; margin: 6px 0 0; }
@@ -158,6 +170,27 @@ const gaveLine = (status, award, held) => {
   return [cls, `You gave back ${award} of the ${held} min held`];
 };
 
+// The pictures of a proof: one on its own; several side by side in a strip that scrolls
+// one at a time (a before and an after), with "1 of 2", dots and arrows under it. A photo
+// listed on the row that hasn't been signed hasn't reached the server from the phone.
+function photoBlock(p, urls) {
+  const alt = (i) => p.kind === "route"
+    ? (urls.length > 1 ? `Map ${i + 1} of ${urls.length} of the routes for ${esc(p.title)}` : `The map of the route for ${esc(p.title)}`)
+    : (urls.length > 1 ? `Proof photo ${i + 1} of ${urls.length} for ${esc(p.title)}` : `The proof photo for ${esc(p.title)}`);
+  const imgs = urls.map((u, i) => `<img src="${esc(u)}" alt="${alt(i)}" loading="lazy">`);
+  const short = Math.max(0, (Number(p.photo_count) || 0) - urls.length);
+  const missing = short && p.status === "pending"
+    ? `<p class="media-line">${short === 1 ? "1 more photo hasn't" : `${short} more photos haven't`} arrived from the phone.</p>` : "";
+  if (imgs.length === 1) return imgs[0] + missing;
+  const word = p.kind === "route" ? "maps" : "photos";
+  return `<div class="photos">
+    <div class="strip" aria-label="${imgs.length} ${word}, side by side: scroll sideways to see each">${imgs.join("")}</div>
+    <div class="pager"><button type="button" class="arrow" data-step="-1" aria-label="Previous ${word.slice(0, -1)}" disabled>‹</button>
+      <span class="count" aria-live="polite">1 of ${imgs.length}</span><span class="dots" aria-hidden="true">${imgs.map((_, i) => `<i${i ? "" : ' class="on"'}></i>`).join("")}</span>
+      <button type="button" class="arrow" data-step="1" aria-label="Next ${word.slice(0, -1)}">›</button></div>
+  </div>${missing}`;
+}
+
 // A stand-in photo for the demo: the live page shows the real one, stamped by the app.
 // "20:14" from seconds; "1:02:05" past an hour.
 const clock = (secs) => { const t = Math.max(0, Math.round(Number(secs) || 0)), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60;
@@ -220,7 +253,7 @@ function demoData() {
     sender: demoNames.sender, keep_hours: 48, expires_at: new Date(now + 47 * 60 * min).toISOString(),
     pending: [
       { id: "demo-sink", title: "Clean the kitchen sink", kind: "photo", status: "pending", done_at: ago(20), coins_held: 5, coins_paid: 5,
-        photo_urls: [samplePhoto("The sink, after", stamp(20))] },
+        photo_urls: [samplePhoto("The sink, before", stamp(35)), samplePhoto("The sink, after", stamp(20))] },
       { id: "demo-piano", title: "Practice piano", kind: "note", status: "pending", done_at: ago(90), coins_held: 5, coins_paid: 5, note: "Twenty minutes of scales, then the Clementi." },
       { id: "demo-mail", title: "Sort the mail", kind: "none", status: "pending", done_at: ago(150), coins_held: 2, coins_paid: 5, coins_forfeited: 3 },
       { id: "demo-walk", title: "Walk the dog", kind: "route", status: "pending", done_at: ago(55), coins_held: 5,
@@ -345,6 +378,20 @@ function wire(root) {
     if (!confirm(`Take back the ${paid} min they were already paid?\n\nFor when it clearly wasn't done. None of the held time is given back either, and your note goes with it.`)) return;
     sendVerdict(id, -Number(paid), kind);
   });
+  for (const box of root.querySelectorAll(".photos")) {
+    const strip = box.querySelector(".strip"), imgs = [...strip.querySelectorAll("img")];
+    const count = box.querySelector(".count"), dots = [...box.querySelectorAll(".dots i")], arrows = [...box.querySelectorAll(".arrow")];
+    const step = () => (imgs[0]?.offsetWidth || 1) + 8;
+    const at = () => Math.min(imgs.length - 1, Math.max(0, Math.round(strip.scrollLeft / step())));
+    const show = () => {
+      const i = at();
+      count.textContent = `${i + 1} of ${imgs.length}`;
+      dots.forEach((d, n) => d.classList.toggle("on", n === i));
+      arrows[0].disabled = i === 0; arrows[1].disabled = i === imgs.length - 1;
+    };
+    strip.addEventListener("scroll", () => requestAnimationFrame(show), { passive: true });
+    for (const a of arrows) a.addEventListener("click", () => strip.scrollTo({ left: (at() + Number(a.dataset.step)) * step(), behavior: "smooth" }));
+  }
   if (root.tagName === "DETAILS") root.addEventListener("toggle", () => {
     const id = root.id.replace(/^card-/, "");
     if (root.open) opened.add(id); else opened.delete(id);
@@ -382,7 +429,7 @@ function card(p) {
     route = `<p class="stats">${esc(parts.join(" · ") || "A route")}<small>Recorded by the phone's own location, in the app${steps ? "; the steps by its motion sensor" : ""}.</small></p>` + flags.map((f) => `<p class="flag">⚠️ ${esc(f)}</p>`).join("");
   }
   const photo = (p.kind === "photo" || p.kind === "screen" || p.kind === "route")
-    ? (urls.length ? urls.map((u, i) => `<img src="${esc(u)}" alt="${p.kind === "route" ? (urls.length > 1 ? `Map ${i + 1} of ${urls.length} of the routes for ${esc(p.title)}` : `The map of the route for ${esc(p.title)}`) : `Proof photo ${i + 1} of ${urls.length} for ${esc(p.title)}`}" loading="lazy">`).join("")
+    ? (urls.length ? photoBlock(p, urls)
        // A test has no photo from a phone: a sample stands in while it waits.
        : p.test ? (p.status === "pending" ? `<img src="${samplePhoto("The bed, made (a sample)", when(p.done_at))}" alt="A sample photo, standing in for the one a real proof would have">` : "")
                 : `<p class="missing">${p.kind === "route" ? (p.status === "pending" ? "The map hasn't arrived from the phone yet." : "The map has been deleted.") : p.status === "pending" ? "The photos haven't arrived from the phone yet." : "The photos have been deleted."}</p>`)
@@ -452,7 +499,7 @@ async function sendVerdict(id, award, kind) {
     card.querySelector(".award")?.remove();
     card.querySelector(".send")?.remove();
     card.querySelector(".err")?.remove();
-    card.querySelectorAll("img").forEach((img) => img.remove());
+    card.querySelectorAll("img, .photos").forEach((el) => el.remove());
     card.insertAdjacentHTML("beforeend", `<p class="done ${cls}" role="status">${esc(text)}${r.photo_deleted ? (kind === "clip" ? " · the video and sound have been deleted" : kind === "route" ? " · the map has been deleted" : " · the photos have been deleted") : ""}${r.note ? ` · “${esc(r.note)}”` : ""}</p>`);
     if (r.already) card.querySelector(".done").textContent = "This one was already settled: " + text.toLowerCase();
     // Then the fresh list, which moves the card to "Already answered" and redoes the lede.
