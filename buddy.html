@@ -82,14 +82,17 @@ textarea { width: 100%; border: 1px solid var(--line); background: var(--bg); co
 input[type="range"] { width: 100%; accent-color: var(--sage); margin: 4px 0 2px; }
 .award .ends { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--muted); }
 button.send { width: 100%; margin-top: 12px; background: var(--sage); border-color: var(--sage); color: var(--sage-ink); }
+button.send.back { background: var(--berry); border-color: var(--berry); }
 .chips { display: flex; gap: 6px; margin-top: 8px; }
 .chips button { padding: 6px 10px; font-size: 0.9rem; font-weight: 600; }
 button { font: inherit; font-weight: 800; color: var(--fg); background: var(--panel); border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 6px; cursor: pointer; }
 button.approve { background: var(--sage); border-color: var(--sage); color: var(--sage-ink); }
 button.partial { border-color: var(--carrot); color: var(--carrot-ink); }
 button.decline { border-color: var(--berry); color: var(--berry-ink); }
-/* "They didn't do it": a quiet line, not a fourth big button; it asks before it sends. */
-button.reject { display: block; width: 100%; margin-top: 10px; padding: 8px 6px; background: none; border: 1.5px dashed var(--berry); color: var(--berry-ink); font-weight: 600; font-size: 0.9rem; }
+/* What the slider's amount does to their minutes, under the chips; red when it takes some back. */
+.award .moves { margin-top: 8px; font-size: 0.85rem; color: var(--muted); }
+.award .moves.back { color: var(--berry-ink); }
+.award .amount span.back { color: var(--berry-ink); }
 button:disabled { opacity: 0.55; cursor: default; }
 button:focus-visible, textarea:focus-visible { outline: 2px solid var(--sage); outline-offset: 2px; }
 .done { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: var(--soft); font-weight: 600; }
@@ -139,7 +142,7 @@ footer { margin-top: 28px; color: var(--muted); font-size: 0.9rem; }
     <ul class="context" id="context"></ul>
   </section>
   <footer id="foot" hidden>
-    The slider is how much of the held dessert time to give back, from none to all; the task counts as done either way. If it clearly wasn't done at all, <b>They didn't do it</b> also takes back the time they were paid the moment they marked it finished. A note back goes with it. Photos are deleted the moment you answer, and after <span id="keep">48</span> hours no matter what. This link stops working <span id="expires"></span>.
+    The slider is their reward for it, from none to all of it, starting at all; the task counts as done either way. Part was paid the moment they marked it finished, and the slider knows how much: above that it gives more, below it takes some of what was paid back (none takes it all back). A note back goes with it. Photos are deleted the moment you answer, and after <span id="keep">48</span> hours no matter what. This link stops working <span id="expires"></span>.
   </footer>
 </main>
 <script>
@@ -155,17 +158,17 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const when = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" }); };
 const STATUS = new Map([["approved", ["approve", "You gave back all of it"]], ["partial", ["partial", "You gave back part of it"]],
-                        ["declined", ["decline", "You gave back none of it"]], ["rejected", ["reject", "You said it wasn't done and took back what was paid"]],
+                        ["declined", ["decline", "You gave back none of it"]], ["rejected", ["reject", "You took back some of what was paid up front"]],
                         ["expired", ["", "Nobody answered in time"]],
                         ["withdrawn", ["", "It was taken back"]]]);
 const statusOf = (s) => STATUS.get(String(s)) || ["", "Settled"];
 // The word on a folded answered card.
 const CHIP = { approved: "✓ Approved", partial: "Partly", declined: "Declined", rejected: "Rejected", expired: "Expired", withdrawn: "Taken back" };
-const gaveLine = (status, award, held) => {
+const gaveLine = (status, award, held, paid) => {
   const [cls, text] = statusOf(status);
   if (award == null) return [cls, text];
   // Below zero: the coins paid up front, taken back ("they didn't do it").
-  if (award < 0) return [cls, `You said it wasn't done: took back the ${-award} min paid up front${held > 0 ? `, and none of the ${held} min held were given back` : ""}`];
+  if (award < 0) return [cls, `You took back ${-award} of the ${paid ?? -award} min paid up front${held > 0 ? `, and gave back none of the ${held} min held` : ""}`];
   if (!(held > 0)) return [cls, text];
   return [cls, `You gave back ${award} of the ${held} min held`];
 };
@@ -361,22 +364,16 @@ function syncCards(container, list) {
 }
 
 function wire(root) {
-  for (const el of root.querySelectorAll("input[type=range]")) el.addEventListener("input", () => {
-    $("amt-" + el.id.slice(6)).textContent = el.value;
-  });
+  for (const el of root.querySelectorAll("input[type=range]")) el.addEventListener("input", () => showReward(el.id.slice(6)));
   for (const el of root.querySelectorAll("[data-set]")) el.addEventListener("click", () => {
     const r = $("range-" + el.dataset.id);
     r.value = el.dataset.set === "0" ? 0 : el.dataset.set === "half" ? Math.ceil(Number(r.max) / 2) : r.max;
-    $("amt-" + el.dataset.id).textContent = r.value;
+    showReward(el.dataset.id);
   });
   for (const el of root.querySelectorAll("[data-send]")) el.addEventListener("click", (e) => {
-    const id = e.currentTarget.dataset.send;
-    sendVerdict(id, Number($("range-" + id).value), e.currentTarget.dataset.kind);
-  });
-  for (const el of root.querySelectorAll("[data-reject]")) el.addEventListener("click", (e) => {
-    const { reject: id, paid, kind } = e.currentTarget.dataset;
-    if (!confirm(`Take back the ${paid} min they were already paid?\n\nFor when it clearly wasn't done. None of the held time is given back either, and your note goes with it.`)) return;
-    sendVerdict(id, -Number(paid), kind);
+    const { send: id, paid, kind } = e.currentTarget.dataset;
+    // What's sent is what moves: the slider's amount less what was paid up front.
+    sendVerdict(id, Number($("range-" + id).value) - Number(paid), kind);
   });
   for (const box of root.querySelectorAll(".photos")) {
     const strip = box.querySelector(".strip"), imgs = [...strip.querySelectorAll("img")];
@@ -396,6 +393,22 @@ function wire(root) {
     const id = root.id.replace(/^card-/, "");
     if (root.open) opened.add(id); else opened.delete(id);
   });
+}
+
+// The slider's amount, and what it does to their minutes given what was paid up front.
+function showReward(id) {
+  const r = $("range-" + id), amount = Number(r.value), paid = Number(r.dataset.paid), held = Number(r.dataset.held);
+  const award = amount - paid, amt = $("amt-" + id), moves = $("moves-" + id), send = $("send-" + id);
+  amt.textContent = amount;
+  amt.classList.toggle("back", award < 0);
+  moves.classList.toggle("back", award < 0);
+  moves.textContent = paid === 0 ? "Nothing was paid up front; this is all of it."
+    : award > 0 ? `They were paid ${paid} up front; this gives ${award} more.`
+    : award === 0 ? `They keep the ${paid} paid up front, nothing more.`
+    : `Takes back ${-award} of the ${paid} they were paid up front${held > 0 ? `, and none of the ${held} held.` : "."}`;
+  const whole = Number(r.max);
+  send.textContent = amount === whole ? `Send: all ${whole} min` : amount === 0 ? `Send: none of the ${whole} min` : `Send: ${amount} of ${whole} min`;
+  send.classList.toggle("back", award < 0);
 }
 
 function card(p) {
@@ -444,8 +457,9 @@ function card(p) {
   const note = p.note ? `<p class="note">“${esc(p.note)}”</p>` : "";
   let tail;
   const held = Number(p.coins_held) || 0;
-  // Paid the moment they marked it finished; "They didn't do it" takes it back.
+  // Paid the moment they marked it finished: the slider's bottom half takes it back.
   const paid = Number(p.coins_paid) || 0;
+  const whole = paid + held;
   const gone = Number(p.coins_forfeited) || 0;
   // "I forgot the proof": nothing to look at, and less riding on it.
   const none = p.kind === "none"
@@ -453,23 +467,24 @@ function card(p) {
     : "";
   if (p.status === "pending") {
     const id = esc(p.id);
+    const moves = paid === 0 ? "Nothing was paid up front; this is all of it." : `They were paid ${paid} up front; this gives ${held} more.`;
     tail = `<div class="award">
-        <div class="amount">Give back <span id="amt-${id}">${held}</span> of ${held} min</div>
-        <input type="range" id="range-${id}" min="0" max="${held}" step="1" value="${held}" aria-label="How much of the ${held} min held to give back">
+        <div class="amount">Their reward: <span id="amt-${id}">${whole}</span> of ${whole} min</div>
+        <input type="range" id="range-${id}" min="0" max="${whole}" step="1" value="${whole}" data-paid="${paid}" data-held="${held}" aria-label="Their reward for ${esc(p.title)}, out of ${whole} min">
         <div class="ends"><span>None</span><span>Half</span><span>All</span></div>
         <div class="chips"><button type="button" data-set="0" data-id="${id}">None</button><button type="button" data-set="half" data-id="${id}">Half</button><button type="button" data-set="all" data-id="${id}">All</button></div>
-        ${paid > 0 ? `<button type="button" class="reject" data-reject="${id}" data-paid="${paid}" data-kind="${esc(p.kind)}">They didn't do it: take back the ${paid} min already paid</button>` : ""}
+        <div class="moves" id="moves-${id}">${moves}</div>
       </div>
       <textarea placeholder="Why, in a line (optional): “Had to re-wash two dishes”" aria-label="A note back about ${esc(p.title)}, optional" maxlength="300" id="note-${id}"></textarea>
-      <button class="send" data-send="${id}" data-kind="${esc(p.kind)}">Send verdict</button>
+      <button class="send" id="send-${id}" data-send="${id}" data-paid="${paid}" data-kind="${esc(p.kind)}">Send: all ${whole} min</button>
       <p class="err" id="err-${id}" aria-live="polite"></p>`;
   } else {
     // A proof sent to several reviewers: the first answer settled it; if that wasn't this link's, say so.
     const other = p.verdict_buddy_id && you && p.verdict_buddy_id !== you;
     const [cls, text] = other
-      ? [statusOf(p.status)[0], p.coins_awarded < 0 ? `Another reviewer answered first: they said it wasn't done and took back the ${-p.coins_awarded} min paid up front`
+      ? [statusOf(p.status)[0], p.coins_awarded < 0 ? `Another reviewer answered first and took back ${-p.coins_awarded} of the ${paid} min paid up front`
          : p.coins_awarded != null && held > 0 ? `Another reviewer answered first and gave back ${p.coins_awarded} of the ${held} min held` : "Another reviewer answered first"]
-      : gaveLine(p.status, p.coins_awarded, held);
+      : gaveLine(p.status, p.coins_awarded, held, paid);
     tail = `<p class="done ${cls}">${esc(text)}${p.verdict_note ? ` · “${esc(p.verdict_note)}”` : ""}${p.test ? " · a test, so nothing changed" : ""}</p>`;
   }
   const whenLine = `<div class="when">Finished ${esc(when(p.done_at))} · ${p.test ? "in a real one, " : ""}${Number(p.coins_held) || 0} min of dessert ${p.test ? "would ride" : "riding"} on it</div>`;
@@ -486,14 +501,14 @@ function card(p) {
     ${body}</article>`;
 }
 
-// Send (the slider's amount) and "They didn't do it" (minus what was paid) both land here.
+// Send: the slider's amount less what was paid up front (below zero takes some of that back).
 async function sendVerdict(id, award, kind) {
   const card = $("card-" + id);
   const buttons = card.querySelectorAll("button");
   buttons.forEach((b) => b.disabled = true);
   try {
     const r = await call({ action: "verdict", token, proof_id: id, award, note: ($("note-" + id)?.value || "").trim() });
-    const [cls, said] = gaveLine(r.status, r.award, r.held);
+    const [cls, said] = gaveLine(r.status, r.award, r.held, Number($("range-" + id)?.dataset.paid));
     const text = said + (testIDs.has(id) ? " · a test, so nothing changed" : "");
     card.querySelector("textarea")?.remove();
     card.querySelector(".award")?.remove();
