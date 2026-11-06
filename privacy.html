@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta property="og:title" content="Veggies First · Privacy">
+<meta property="og:description" content="What Veggies First keeps on your phone, what it sends to your reviewer, and how long it stays.">
+<meta property="og:type" content="website">
+<title>Veggies First · Privacy</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800&display=swap">
+<style>
+:root {
+  --bg: #f6f7f3; --panel: #ffffff; --fg: #22301f; --muted: #6b7a66; --line: #dde3d6;
+  --sage: #4e8a5a; --sage-ink: #ffffff; --soft: #eef2ea;
+  --font: "Nunito", -apple-system, "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #171b15; --panel: #202619; --fg: #e9eee4; --muted: #9aa893; --line: #333d2e;
+    --sage: #7cbf88; --sage-ink: #10180f; --soft: #27301f; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #171b15; --panel: #202619; --fg: #e9eee4; --muted: #9aa893; --line: #333d2e;
+  --sage: #7cbf88; --sage-ink: #10180f; --soft: #27301f; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--fg); font: 17px/1.5 var(--font); }
+body { padding: 0 max(16px, env(safe-area-inset-left, 0px)) calc(40px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-right, 0px)); }
+main { max-width: 560px; margin: 0 auto; padding-top: max(32px, env(safe-area-inset-top, 0px)); }
+.mark { font-size: 56px; line-height: 1; text-align: center; }
+h1 { font-size: 1.6rem; font-weight: 800; margin: 12px 0 6px; letter-spacing: -0.01em; text-align: center; text-wrap: balance; }
+.lede { color: var(--muted); margin: 0 0 24px; text-align: center; }
+h2 { font-size: 1.1rem; font-weight: 800; margin: 0 0 8px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 20px; margin: 0 0 16px; }
+.card p, .card ul { margin: 0 0 10px; }
+.card p:last-child, .card ul:last-child { margin-bottom: 0; }
+ul { padding-left: 20px; }
+li { margin: 4px 0; }
+.small { color: var(--muted); font-size: 0.85rem; text-align: center; margin-top: 24px; }
+a { color: var(--sage); }
+</style>
+</head>
+<body>
+<main>
+  <div class="mark" aria-hidden="true">🥕</div>
+  <h1>Privacy</h1>
+  <p class="lede">Veggies First is a to-do list that locks your dessert apps until the veggies are done. Here is what it keeps, where, and for how long.</p>
+
+  <div class="card">
+    <h2>No account, no tracking</h2>
+    <p>There is nothing to sign up for. The app has no analytics, no ads and no third-party SDKs, and it never sells or shares anything with anyone but the reviewer you pick.</p>
+    <p>When it first runs, the app makes up a random install ID for itself. That ID is how a reviewer link knows whose proofs it shows. It is not tied to your name, your Apple ID or your phone.</p>
+  </div>
+
+  <div class="card">
+    <h2>What stays on your phone</h2>
+    <ul>
+      <li><strong>Your plate:</strong> veggies, repeats, buckets, backlog, history, dessert coins and settings. Stored on the phone only.</li>
+      <li><strong>Screen Time:</strong> which apps you picked as dessert and how long you used them. iOS gives the app opaque tokens, so it never learns which apps those are. Nothing leaves the phone.</li>
+      <li><strong>Health:</strong> today's steps and walking distance, read for step veggies and the per-mile coin. Read only, never written, never sent.</li>
+      <li><strong>Location:</strong> used around the places you save (the gym, the library) to tell arriving from leaving, and during a route proof to draw the path. Coordinates never leave the phone; a route proof sends a map picture and the distance, time and steps.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>What goes to your reviewer</h2>
+    <p>Only when you finish a veggie that asks for proof. The proof is uploaded to the app's server (hosted on Supabase) so the person you picked can see it, either in their own copy of the app or on a web page from a link you text them.</p>
+    <ul>
+      <li>The veggie's title, when you finished it, and the coins at stake.</li>
+      <li>The proof itself: a photo, a screenshot of another app (with that app's name), a short clip or its sound, a route map, or a typed note.</li>
+      <li>The name you typed for yourself in Setup, if any, so the reviewer sees who it's from.</li>
+      <li>A link's page also shows the day's finished veggies, so the reviewer has the picture.</li>
+    </ul>
+    <p>Your reviewer sends back a verdict and an optional note. Both come to your phone and are kept there with the proof.</p>
+  </div>
+
+  <div class="card">
+    <h2>How long it stays</h2>
+    <ul>
+      <li>A proof waits for its verdict for the time you set in Setup, from one day to a week.</li>
+      <li>Photos, screenshots, clips and maps are deleted from the server as soon as the proof is answered or its time runs out.</li>
+      <li>The remaining record (title, times, verdict) is purged two weeks after that.</li>
+      <li>A reviewer link stops working after 48 hours and is deleted a day later. An invite code lasts a week.</li>
+      <li>Deleting a veggie on your phone withdraws a proof that is still waiting.</li>
+    </ul>
+    <p>Deleting the app removes everything on the phone. Anything still on the server ages out on the schedule above.</p>
+  </div>
+
+  <div class="card">
+    <h2>Children</h2>
+    <p>The app is not aimed at children under 13 and does not knowingly collect anything from them.</p>
+  </div>
+
+  <div class="card">
+    <h2>Questions</h2>
+    <p>Write to <a href="mailto:matthewsb419@gmail.com">matthewsb419@gmail.com</a>. If this page changes, the date below changes with it.</p>
+  </div>
+
+  <p class="small">Veggies First · last updated November 5, 2026</p>
+</main>
+</body>
+</html>
