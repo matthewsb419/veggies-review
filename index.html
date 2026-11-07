@@ -70,6 +70,7 @@ nav.tabs button[aria-selected="true"] { background: var(--accent); color: var(--
 pre.log { margin: 0; max-height: 260px; overflow: auto; font: 12px/1.4 var(--mono); background: var(--bg); border-radius: 10px; padding: 10px; }
 .media { display: flex; gap: 8px; flex-wrap: wrap; }
 .media a, .media video { display: block; width: 180px; max-width: 100%; border-radius: 10px; border: 1px solid var(--line); overflow: hidden; background: var(--bg); }
+.media audio { display: block; width: 100%; max-width: 360px; }
 .media img { display: block; width: 100%; height: auto; }
 .media .missing { width: 180px; padding: 10px; font-size: 0.85rem; color: var(--muted); border: 1px dashed var(--line); border-radius: 10px; }
 details summary { cursor: pointer; color: var(--muted); font-weight: 600; }
@@ -257,7 +258,7 @@ async function loadInbox() {
   }));
 }
 
-// Photos and clips live in a private bucket: a signed link for each, good for an hour,
+// Photos, clips and voice notes live in a private bucket: a signed link for each, good for an hour,
 // fetched when the card opens.
 async function loadMedia(r) {
   if (!r || !(r.attachments || []).length) return;
@@ -269,6 +270,7 @@ async function loadMedia(r) {
   box.innerHTML = data.map((d, i) => {
     const path = r.attachments[i];
     if (d.error || !d.signedUrl) return `<span class="missing">Not uploaded yet: ${esc(path.split("/").pop())}</span>`;
+    if (/\.(m4a|mp3|aac)$/i.test(path)) return `<audio controls preload="metadata" src="${esc(d.signedUrl)}"></audio>`;
     return /\.(mp4|mov)$/i.test(path)
       ? `<video controls preload="metadata" src="${esc(d.signedUrl)}"></video>`
       : `<a href="${esc(d.signedUrl)}" target="_blank" rel="noopener"><img src="${esc(d.signedUrl)}" alt="Attachment ${i + 1}" loading="lazy"></a>`;
