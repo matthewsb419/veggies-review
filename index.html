@@ -65,6 +65,11 @@ nav.tabs button[aria-selected="true"] { background: var(--accent); color: var(--
 .pill.feature { background: var(--idea); color: #1d1600; }
 .pill.status { border: 1px solid var(--line); color: var(--muted); }
 .pill.status.new { border-color: var(--accent); color: var(--accent); }
+.pill.att { border: 1px solid var(--line); color: var(--muted); }
+.pill.att.video { border-color: #c2410c; color: #c2410c; }
+.pill.att.voice { border-color: #6d28d9; color: #6d28d9; }
+.pill.att.shot { border-color: #0369a1; color: #0369a1; }
+.pill.att.none { border-style: dashed; }
 .detail { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); display: grid; gap: 12px; }
 .detail p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 pre.log { margin: 0; max-height: 260px; overflow: auto; font: 12px/1.4 var(--mono); background: var(--bg); border-radius: 10px; padding: 10px; }
@@ -216,6 +221,24 @@ function renderChips(counts) {
     `<button aria-pressed="${statusFilter === s}" data-s="${s}">${s === "all" ? "All" : STATUS_LABEL[s]}${counts[s] ? " · " + counts[s] : ""}</button>`).join("");
   $("statusChips").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { statusFilter = b.dataset.s; loadInbox(); }));
 }
+// What came with a report, at a glance: a pill per kind of attachment (screen recording,
+// voice note, screenshot) with a count, or "Message only" when there's just the text.
+function attachmentPills(r) {
+  const kinds = { video: 0, voice: 0, shot: 0, other: 0 };
+  (r.attachments || []).forEach((path) => {
+    if (/\.(mp4|mov)$/i.test(path)) kinds.video++;
+    else if (/\.(m4a|mp3|aac)$/i.test(path)) kinds.voice++;
+    else if (/\.(jpe?g|png|heic|gif|webp)$/i.test(path)) kinds.shot++;
+    else kinds.other++;
+  });
+  const label = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const pills = [];
+  if (kinds.video) pills.push(`<span class="pill att video" title="Screen recording, plays when the card is open">🎥 ${label(kinds.video, "video", "videos")}</span>`);
+  if (kinds.voice) pills.push(`<span class="pill att voice" title="Voice note, plays when the card is open">🎙 ${label(kinds.voice, "voice note", "voice notes")}</span>`);
+  if (kinds.shot) pills.push(`<span class="pill att shot" title="Screenshot, shown when the card is open">🖼 ${label(kinds.shot, "screenshot", "screenshots")}</span>`);
+  if (kinds.other) pills.push(`<span class="pill att">📎 ${label(kinds.other, "file", "files")}</span>`);
+  return pills.length ? pills.join("") : `<span class="pill att none" title="No attachment, just the text">Message only</span>`;
+}
 async function loadInbox() {
   const { data: all, error } = await sb.from("feedback").select("*").order("created_at", { ascending: false }).limit(500);
   if (error) { $("inboxList").innerHTML = `<p class="err">${esc(error.message)}</p>`; return; }
@@ -226,7 +249,7 @@ async function loadInbox() {
   $("inboxList").innerHTML = rows.map((r) => `
     <article class="card${openId === r.id ? " open" : ""}" data-id="${r.id}">
       <div class="row"><span class="title">${esc(r.title)}</span><span class="when">${ago(r.created_at)}</span></div>
-      <div class="meta"><span class="pill ${r.kind}">${r.kind === "bug" ? "Bug" : "Idea"}</span><span class="pill status ${r.status}">${STATUS_LABEL[r.status]}</span>
+      <div class="meta"><span class="pill ${r.kind}">${r.kind === "bug" ? "Bug" : "Idea"}</span><span class="pill status ${r.status}">${STATUS_LABEL[r.status]}</span>${attachmentPills(r)}
         <span>v${esc(r.app_version)} (${esc(r.build)})</span><span>iOS ${esc(r.ios_version)}</span><span>${esc(r.device_model)}</span></div>
       <div class="detail" ${openId === r.id ? "" : "hidden"}>
         <p>${r.details ? esc(r.details) : "<i>No details given.</i>"}</p>
