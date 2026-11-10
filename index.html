@@ -5,6 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>Veggies First Review</title>
+<!-- Installable: Share → Add to Home Screen on the iPhone puts it on the home screen as an app
+     (standalone, no browser bars). The manifest and icons sit beside this page. -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Review">
+<meta name="theme-color" content="#f6f7f3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#171b15" media="(prefers-color-scheme: dark)">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800&display=swap">
 <style>
 /* One column on a phone, the same column centered on a desktop: a reading pane for an inbox. */
@@ -90,6 +101,13 @@ details summary { cursor: pointer; color: var(--muted); font-weight: 600; }
 .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-weight: 600; opacity: 0; transition: opacity .2s; pointer-events: none; }
 .toast.show { opacity: 1; }
 .err { color: var(--bug); font-weight: 600; }
+/* On the home screen there's no browser reload, so the bar gets one; and a one-time hint in
+   Safari on an iPhone on how to put it there. */
+.bar .tools { display: flex; gap: 8px; align-items: center; }
+button.icon { padding: 8px 10px; line-height: 1; font-size: 1.1rem; }
+.install { background: var(--panel); border: 1px solid var(--accent); border-radius: 14px; padding: 10px 14px; margin: 0 0 14px; display: flex; gap: 10px; align-items: center; font-size: 0.9rem; }
+.install b { font-weight: 800; }
+.install button { margin-left: auto; white-space: nowrap; }
 form.login { display: grid; gap: 12px; max-width: 360px; margin: 48px auto; }
 a { color: var(--accent); overflow-wrap: anywhere; }
 .copy { font-size: 0.8rem; padding: 3px 9px; }
@@ -100,8 +118,16 @@ a { color: var(--accent); overflow-wrap: anywhere; }
 <main>
   <header class="bar">
     <h1>🥕 Veggies First review</h1>
-    <button id="signout" hidden>Sign out</button>
+    <div class="tools">
+      <button id="refresh" class="icon" hidden title="Refresh" aria-label="Refresh">↻</button>
+      <button id="signout" hidden>Sign out</button>
+    </div>
   </header>
+  <div class="install" id="install" hidden>
+    <span>📲</span>
+    <span><b>Put this on your home screen:</b> tap Share, then <b>Add to Home Screen</b>. It opens like an app from then on.</span>
+    <button id="installDismiss" type="button">Got it</button>
+  </div>
 
   <section id="login" hidden>
     <form class="login" id="loginForm">
@@ -190,8 +216,26 @@ async function boot() {
 }
 function show(signedIn) {
   $("login").hidden = signedIn; $("app").hidden = !signedIn; $("signout").hidden = !signedIn;
+  $("refresh").hidden = !signedIn;
   if (signedIn) loadAll();
 }
+$("refresh").addEventListener("click", async () => {
+  $("refresh").disabled = true;
+  try { await loadAll(); toast("Up to date"); } finally { $("refresh").disabled = false; }
+});
+// The install hint: Safari on an iPhone, not already on the home screen, not dismissed before.
+(function installHint() {
+  const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  const iPhone = /iPhone|iPad|iPod/.test(navigator.userAgent) && !/CriOS|FxiOS/.test(navigator.userAgent);
+  let seen = false;
+  try { seen = localStorage.getItem("installHintSeen") === "1"; } catch (_) {}
+  if (standalone || !iPhone || seen) return;
+  $("install").hidden = false;
+  $("installDismiss").addEventListener("click", () => {
+    $("install").hidden = true;
+    try { localStorage.setItem("installHintSeen", "1"); } catch (_) {}
+  });
+})();
 $("loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   $("loginErr").hidden = true;
