@@ -327,11 +327,12 @@ async function loadInbox() {
   if (!rows.length) { $("inboxList").innerHTML = `<p class="empty">Nothing ${statusFilter === "all" ? "yet" : statusFilter === "waiting" ? "waiting on you" : statusFilter === "claude" ? "with Claude" : STATUS_LABEL[statusFilter].toLowerCase()}. Reports from the app land here.</p>`; return; }
   $("inboxList").innerHTML = rows.map((r) => `
     <article class="card${openId === r.id ? " open" : ""}" data-id="${r.id}">
-      <div class="row"><span class="title">${esc(r.title)}</span><span class="when">${ago(r.created_at)}</span></div>
+      <div class="row"><span class="title">${esc(r.title)}${r.tester_name ? ` <span style="font-weight:400;color:var(--muted)">· ${esc(r.tester_name)}</span>` : ""}</span><span class="when">${ago(r.created_at)}</span></div>
       <div class="meta"><span class="pill ${r.kind}">${r.kind === "bug" ? "Bug" : "Idea"}</span><span class="pill status ${r.status}">${statusLabel(r)}</span>${attachmentPills(r)}${trackPills(r)}
         <span>v${esc(r.app_version)} (${esc(r.build)})</span><span>iOS ${esc(r.ios_version)}</span><span>${esc(r.device_model)}</span></div>
       <div class="detail" ${openId === r.id ? "" : "hidden"}>
         <p>${r.details ? esc(r.details) : "<i>No details given.</i>"}</p>
+        ${r.tester_name ? `<div><b>From ${esc(r.tester_name)}</b> <span style="color:var(--muted)">(the name they gave in setup)</span></div>` : ""}
         ${r.email ? `<div class="actions"><span>${esc(r.email)}</span><button class="copy" data-copy="${esc(r.email)}">Copy</button></div>` : "<span style='color:var(--muted)'>No email left.</span>"}
         ${(r.attachments || []).length ? `<div class="media" data-media="${r.id}"><span class="missing">Loading ${r.attachments.length} attachment${r.attachments.length === 1 ? "" : "s"}…</span></div>` : ""}
         ${r.dessert_log ? `<details><summary>Dessert log (${r.dessert_log.split("\n").length} lines)</summary><pre class="log">${esc(r.dessert_log)}</pre></details>` : ""}
