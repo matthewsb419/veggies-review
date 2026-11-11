@@ -70,6 +70,9 @@ nav.tabs button[aria-selected="true"] { background: var(--accent); color: var(--
 .pill.att.voice { border-color: #6d28d9; color: #6d28d9; }
 .pill.att.shot { border-color: #0369a1; color: #0369a1; }
 .pill.att.none { border-style: dashed; }
+.pill.track { border: 1px solid var(--line); color: var(--muted); }
+.pill.track.waiting { border-color: var(--bug); color: var(--bug); }
+.pill.track.done { border-color: #15803d; color: #15803d; }
 .detail { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); display: grid; gap: 12px; }
 .detail p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 pre.log { margin: 0; max-height: 260px; overflow: auto; font: 12px/1.4 var(--mono); background: var(--bg); border-radius: 10px; padding: 10px; }
@@ -163,6 +166,9 @@ const STATUS_LABEL = { new: "New", looking: "Looking", planned: "Planned", done:
 const SOURCE_LABEL = { tiktok: "TikTok", youtube: "YouTube", instagram: "Instagram", friend: "A friend", app_store: "App Store", search: "Web search", other: "Somewhere else" };
 const $ = (id) => document.getElementById(id);
 let statusFilter = "new";
+const closed = (r) => r.status === "done" || r.status === "wont_fix";
+const wantsReply = (r) => !!r.email && !r.replied_at;
+const wantsAction = (r) => !r.actioned_at && !closed(r);
 let creatorsById = {};
 let openId = null;
 
@@ -217,8 +223,8 @@ async function loadAll() {
 
 // Inbox
 function renderChips(counts) {
-  $("statusChips").innerHTML = ["new", "looking", "planned", "done", "wont_fix", "all"].map((s) =>
-    `<button aria-pressed="${statusFilter === s}" data-s="${s}">${s === "all" ? "All" : STATUS_LABEL[s]}${counts[s] ? " · " + counts[s] : ""}</button>`).join("");
+  $("statusChips").innerHTML = ["new", "looking", "planned", "done", "wont_fix", "waiting", "all"].map((s) =>
+    `<button aria-pressed="${statusFilter === s}" data-s="${s}">${s === "all" ? "All" : s === "waiting" ? "Waiting on you" : STATUS_LABEL[s]}${counts[s] ? " · " + counts[s] : ""}</button>`).join("");
   $("statusChips").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { statusFilter = b.dataset.s; loadInbox(); }));
 }
 // What came with a report, at a glance: a pill per kind of attachment (screen recording,
@@ -239,17 +245,26 @@ function attachmentPills(r) {
   if (kinds.other) pills.push(`<span class="pill att">📎 ${label(kinds.other, "file", "files")}</span>`);
   return pills.length ? pills.join("") : `<span class="pill att none" title="No attachment, just the text">Message only</span>`;
 }
+// Two marks the app sets too: whether the tester has been replied to (only when they left an email)
+// and whether the ticket has been actioned (Done and Won't fix count as actioned on their own).
+function trackPills(r) {
+  const pills = [];
+  if (r.email) pills.push(r.replied_at ? `<span class="pill track done" title="Replied ${ago(r.replied_at)}">Replied</span>` : `<span class="pill track waiting" title="They left an email and haven't heard back">Needs reply</span>`);
+  if (r.actioned_at) pills.push(`<span class="pill track done" title="Actioned ${ago(r.actioned_at)}">Actioned</span>`);
+  else if (!closed(r)) pills.push(`<span class="pill track waiting" title="Nothing done about it yet">Not actioned</span>`);
+  return pills.join("");
+}
 async function loadInbox() {
   const { data: all, error } = await sb.from("feedback").select("*").order("created_at", { ascending: false }).limit(500);
   if (error) { $("inboxList").innerHTML = `<p class="err">${esc(error.message)}</p>`; return; }
-  const counts = {}; all.forEach((r) => { counts[r.status] = (counts[r.status] || 0) + 1; });
+  const counts = {}; all.forEach((r) => { counts[r.status] = (counts[r.status] || 0) + 1; if (wantsReply(r) || wantsAction(r)) counts.waiting = (counts.waiting || 0) + 1; });
   renderChips(counts);
-  const rows = statusFilter === "all" ? all : all.filter((r) => r.status === statusFilter);
-  if (!rows.length) { $("inboxList").innerHTML = `<p class="empty">Nothing ${statusFilter === "all" ? "yet" : STATUS_LABEL[statusFilter].toLowerCase()}. Reports from the app land here.</p>`; return; }
+  const rows = statusFilter === "all" ? all : statusFilter === "waiting" ? all.filter((r) => wantsReply(r) || wantsAction(r)) : all.filter((r) => r.status === statusFilter);
+  if (!rows.length) { $("inboxList").innerHTML = `<p class="empty">Nothing ${statusFilter === "all" ? "yet" : statusFilter === "waiting" ? "waiting on you" : STATUS_LABEL[statusFilter].toLowerCase()}. Reports from the app land here.</p>`; return; }
   $("inboxList").innerHTML = rows.map((r) => `
     <article class="card${openId === r.id ? " open" : ""}" data-id="${r.id}">
       <div class="row"><span class="title">${esc(r.title)}</span><span class="when">${ago(r.created_at)}</span></div>
-      <div class="meta"><span class="pill ${r.kind}">${r.kind === "bug" ? "Bug" : "Idea"}</span><span class="pill status ${r.status}">${STATUS_LABEL[r.status]}</span>${attachmentPills(r)}
+      <div class="meta"><span class="pill ${r.kind}">${r.kind === "bug" ? "Bug" : "Idea"}</span><span class="pill status ${r.status}">${STATUS_LABEL[r.status]}</span>${attachmentPills(r)}${trackPills(r)}
         <span>v${esc(r.app_version)} (${esc(r.build)})</span><span>iOS ${esc(r.ios_version)}</span><span>${esc(r.device_model)}</span></div>
       <div class="detail" ${openId === r.id ? "" : "hidden"}>
         <p>${r.details ? esc(r.details) : "<i>No details given.</i>"}</p>
@@ -261,7 +276,9 @@ async function loadInbox() {
           <div><label>Install</label><div class="actions"><code style="font:12px var(--mono)">${r.install_id.slice(0, 8)}…</code><button class="copy" data-copy="${r.install_id}">Copy</button></div></div>
         </div>
         <div><label for="no-${r.id}">Notes (private)</label><textarea id="no-${r.id}" data-notes="${r.id}">${esc(r.notes)}</textarea></div>
-        <div class="actions"><button class="primary" data-save="${r.id}">Save</button></div>
+        <div class="actions"><label><input type="checkbox" data-actioned="${r.id}" ${r.actioned_at ? "checked" : ""}> Actioned${r.actioned_at ? ` <span style="color:var(--muted)">(${ago(r.actioned_at)})</span>` : ""}</label><button class="primary" data-save="${r.id}">Save</button></div>
+        <div><label for="re-${r.id}">Reply to the tester${r.replied_at ? ` <span style="color:var(--muted)">(sent ${ago(r.replied_at)})</span>` : ""}</label><textarea id="re-${r.id}" data-reply="${r.id}" placeholder="${r.email ? "What you told them. Saving marks the ticket replied." : "No email left, so there's no one to reply to; you can still keep a note of what you'd say."}">${esc(r.reply)}</textarea></div>
+        <div class="actions"><button data-savereply="${r.id}">Save reply</button>${r.email ? `<a class="copy" href="mailto:${esc(r.email)}?subject=${encodeURIComponent("Re: " + r.title)}" data-mail="${r.id}">Email them</a>` : ""}</div>
       </div>
     </article>`).join("");
   $("inboxList").querySelectorAll(".card .row").forEach((h) => h.addEventListener("click", () => {
@@ -275,9 +292,25 @@ async function loadInbox() {
     const id = b.dataset.save;
     const status = document.querySelector(`[data-status="${id}"]`).value;
     const notes = document.querySelector(`[data-notes="${id}"]`).value.trim() || null;
-    const { error } = await sb.from("feedback").update({ status, notes }).eq("id", id);
+    const r = rows.find((x) => x.id === id);
+    const checked = document.querySelector(`[data-actioned="${id}"]`).checked;
+    const fields = { status, notes };
+    if (checked && !r.actioned_at) fields.actioned_at = new Date().toISOString();
+    if (!checked && r.actioned_at) fields.actioned_at = null;
+    const { error } = await sb.from("feedback").update(fields).eq("id", id);
     if (error) { toast(error.message); return; }
     toast("Saved"); loadInbox();
+  }));
+  $("inboxList").querySelectorAll("[data-savereply]").forEach((b) => b.addEventListener("click", async () => {
+    const id = b.dataset.savereply;
+    const reply = document.querySelector(`[data-reply="${id}"]`).value.trim() || null;
+    const { error } = await sb.from("feedback").update({ reply }).eq("id", id);
+    if (error) { toast(error.message); return; }
+    toast(reply ? "Reply saved" : "Reply cleared"); loadInbox();
+  }));
+  $("inboxList").querySelectorAll("[data-mail]").forEach((a) => a.addEventListener("click", () => {
+    const reply = document.querySelector(`[data-reply="${a.dataset.mail}"]`).value.trim();
+    if (reply) a.href = a.href.split("&body=")[0] + "&body=" + encodeURIComponent(reply);
   }));
 }
 
