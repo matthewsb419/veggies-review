@@ -303,8 +303,9 @@ function attachmentPills(r) {
 function trackPills(r) {
   const pills = [];
   if (r.email) pills.push(r.replied_at ? `<span class="pill track done" title="Replied ${ago(r.replied_at)}">Replied</span>` : `<span class="pill track waiting" title="They left an email and haven't heard back">Needs reply</span>`);
+  if (r.resolved_build) pills.push(`<span class="pill track done" title="${r.fix_pr ? "PR #" + r.fix_pr + ", " : ""}first TestFlight build with the fix">Fixed in build ${esc(r.resolved_build)}</span>`);
   const stage = claudeStage(r);
-  if (stage) pills.push(`<span class="pill track ${stage === "finished" ? "done" : "claude"}" title="${stage === "queued" ? "Waiting for the top of the hour" : stage === "working" ? "Claude is on it" : "Read the result, then set Done or Won't fix"}">${STAGE_LABEL[stage]}</span>`);
+  if (stage && !r.resolved_build) pills.push(`<span class="pill track ${stage === "finished" ? "done" : "claude"}" title="${stage === "queued" ? "Waiting for the top of the hour" : stage === "working" ? "Claude is on it" : "Read the result, then set Done or Won't fix"}">${STAGE_LABEL[stage]}</span>`);
   else if (r.actioned_at) pills.push(`<span class="pill track done" title="Actioned ${ago(r.actioned_at)}">Actioned</span>`);
   else if (!closed(r)) pills.push(`<span class="pill track waiting" title="Nothing done about it yet">Not actioned</span>`);
   return pills.join("");
@@ -338,6 +339,10 @@ async function loadInbox() {
           <div><label for="st-${r.id}">Status</label><select id="st-${r.id}" data-status="${r.id}">${STATUSES.map((s) => `<option value="${s}" ${s === r.status ? "selected" : ""}>${STATUS_LABEL[s]}</option>`).join("")}</select></div>
           <div><label>Install</label><div class="actions"><code style="font:12px var(--mono)">${r.install_id.slice(0, 8)}…</code><button class="copy" data-copy="${r.install_id}">Copy</button></div></div>
         </div>
+        <div class="two">
+          <div><label for="rb-${r.id}">Resolved in build</label><input id="rb-${r.id}" data-build="${r.id}" inputmode="numeric" placeholder="fills in on its own when Claude's fix ships" value="${esc(r.resolved_build)}"></div>
+          <div><label>Fix</label><div>${r.fix_pr ? `<a href="https://github.com/matthewsb419/veggies-before-dessert/pull/${r.fix_pr}">PR #${r.fix_pr}</a>` : "<span style='color:var(--muted)'>none recorded</span>"}</div></div>
+        </div>
         <div><label for="no-${r.id}">Notes (private)</label><textarea id="no-${r.id}" data-notes="${r.id}">${esc(r.notes)}</textarea></div>
         <div class="actions"><label><input type="checkbox" data-actioned="${r.id}" ${r.actioned_at ? "checked" : ""}> Actioned${r.actioned_at ? ` <span style="color:var(--muted)">(${ago(r.actioned_at)})</span>` : ""}</label><button class="primary" data-save="${r.id}">Save</button></div>
         <div class="claude-box" data-claudebox="${r.id}">
@@ -366,7 +371,8 @@ async function loadInbox() {
     const notes = document.querySelector(`[data-notes="${id}"]`).value.trim() || null;
     const r = rows.find((x) => x.id === id);
     const checked = document.querySelector(`[data-actioned="${id}"]`).checked;
-    const fields = { status, notes };
+    const resolved_build = document.querySelector(`[data-build="${id}"]`).value.trim() || null;
+    const fields = { status, notes, resolved_build };
     if (checked && !r.actioned_at) fields.actioned_at = new Date().toISOString();
     if (!checked && r.actioned_at) fields.actioned_at = null;
     const { error } = await sb.from("feedback").update(fields).eq("id", id);
