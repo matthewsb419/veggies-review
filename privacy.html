@@ -52,9 +52,9 @@ a { color: var(--sage); }
   <div class="card">
     <h2>The short version</h2>
     <ul>
-      <li>Your veggies, settings, Screen Time, Health and location stay on your phone.</li>
+      <li>Your veggies, settings, Screen Time, Health and location live on your phone. If you sign in, a backup copy of your plate is kept in your account so you can get it back; you can switch that off.</li>
       <li>No ads, no analytics, no tracking across other apps or sites, and nothing is sold.</li>
-      <li>The server holds your account, any proof you send to a reviewer, your household if you join one, and what you write to us.</li>
+      <li>The server holds your account, the backup of your plate if it's on, any proof you send to a reviewer, your household if you join one, and what you write to us.</li>
       <li>Apple handles payment. We never see your card.</li>
     </ul>
   </div>
@@ -63,6 +63,7 @@ a { color: var(--sage); }
     <h2>Your account</h2>
     <p>You sign in with Apple. Apple gives the app an ID for you and an email address: your own, or a private relay address if you choose "Hide My Email". The app does not get your Apple password, and we do not ask for your name.</p>
     <p>The server (hosted on Supabase) keeps that ID and email, the date the account was made, and for each phone you sign in on: a random install ID, the phone model and the app version. That is how a new phone finds your plan.</p>
+    <p><strong>Backup of your plate:</strong> while you are signed in and “Back up to my account” is on (Setup → Backups), the app copies your plate to your account when you open it, a few hours apart at most, so a deleted app or a new phone can get it back. The copy holds what the plate holds: your veggies, repeats, backlog, history, dessert coins and settings, the places you saved for place veggies (name and location), your reviewers' names, and the day's log of sessions. It does not hold proof photos or clips, Health data beyond today's step count, or which apps you picked (those are opaque tokens that only mean something on the phone they came from). The server keeps each phone's last 14 days. Only your account can read them. Switching the backup off stops new copies and offers to delete the ones there; deleting your account deletes them all.</p>
     <p><strong>Deleting your account:</strong> Setup → Account → Delete account removes the account and everything filed under it from the server, for good. Cancel a subscription separately in the App Store; deleting the account does not cancel it.</p>
   </div>
 
@@ -76,10 +77,10 @@ a { color: var(--sage); }
   <div class="card">
     <h2>What stays on your phone</h2>
     <ul>
-      <li><strong>Your plate:</strong> veggies, repeats, buckets, backlog, history, dessert coins and settings. Stored on the phone only.</li>
+      <li><strong>Your plate:</strong> veggies, repeats, buckets, backlog, history, dessert coins and settings. Stored on the phone, with a week of daily copies beside it (Setup → Backups). It leaves the phone only as the account backup described above, if you are signed in and have it on.</li>
       <li><strong>Screen Time:</strong> which apps you picked as dessert and how long you used them. iOS gives the app opaque tokens, so it never learns which apps those are. Nothing leaves the phone.</li>
       <li><strong>Health:</strong> today's steps and walking distance, read for step veggies and the per-mile coin. Read only, never written, never sent.</li>
-      <li><strong>Location:</strong> used around the places you save (the gym, the library) to tell arriving from leaving, and during a route proof to draw the path. Coordinates never leave the phone; a route proof sends a map picture and the distance, time and steps.</li>
+      <li><strong>Location:</strong> used around the places you save (the gym, the library) to tell arriving from leaving, and during a route proof to draw the path. A route's path never leaves the phone; a route proof sends a map picture and the distance, time and steps. The places you saved are part of your plate, so they are in the account backup when that is on.</li>
     </ul>
   </div>
 
@@ -104,7 +105,7 @@ a { color: var(--sage); }
       <li>A reviewer link stops working after 48 hours and is deleted a day later. An invite code lasts a week.</li>
       <li>Deleting a veggie on your phone withdraws a proof that is still waiting.</li>
     </ul>
-    <p>Deleting the app removes everything on the phone. Proofs still on the server age out on the schedule above; your account stays until you delete it.</p>
+    <p>Deleting the app removes everything on the phone. Proofs still on the server age out on the schedule above; your account, and the backup of your plate in it, stay until you delete them.</p>
   </div>
 
   <div class="card">
