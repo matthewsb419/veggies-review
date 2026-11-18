@@ -40,6 +40,7 @@ h1 { font-size: 1.5rem; font-weight: 800; margin: 12px 0 6px; letter-spacing: -0
 .hint { color: var(--muted); font-size: 0.92rem; margin: 10px 0 0; }
 .small { color: var(--muted); font-size: 0.85rem; }
 #missing { display: none; }
+[hidden] { display: none !important; }
 </style>
 </head>
 <body>
@@ -60,7 +61,15 @@ h1 { font-size: 1.5rem; font-weight: 800; margin: 12px 0 6px; letter-spacing: -0
     <p>This link is missing its code. Ask whoever sent it to make a new one in Veggies First (Setup → Household → Add a member).</p>
   </div>
 
-  <p class="small">Don't have Veggies First yet? It's on its way to the App Store. Keep this message: the link works once the app is installed, for a week.</p>
+  <div class="card">
+    <p style="margin:0 0 8px;font-weight:800">Don't have Veggies First yet?</p>
+    <p class="small" style="margin:0 0 12px">1. Install it (it's on its way to the App Store; until then, whoever added you can send a TestFlight invite).<br>
+    2. Open it. The first page has <b>Joining a household? Use their code</b>.<br>
+    3. Type the code above, or come back to this message and tap the link again.</p>
+    <button class="button" id="copy" type="button" style="background:var(--soft);color:var(--fg)">Copy the code</button>
+    <p class="small" id="copied" style="margin:8px 0 0" hidden>Copied. Paste it into the app's code box.</p>
+  </div>
+  <p class="small">The code works once, for a week from when it was made.</p>
 </main>
 <script>
 (function () {
@@ -72,6 +81,10 @@ h1 { font-size: 1.5rem; font-weight: 800; margin: 12px 0 6px; letter-spacing: -0
   if (!ok) return;
   document.getElementById("code").textContent = code;
   document.getElementById("open").href = "veggiesfirst://household/" + code;
+  document.getElementById("copy").addEventListener("click", function () {
+    var done = function () { document.getElementById("copied").hidden = false; };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done, done); else done();
+  });
 })();
 </script>
 </body>
