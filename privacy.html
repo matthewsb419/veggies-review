@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <meta property="og:title" content="Veggies First · Privacy">
-<meta property="og:description" content="What Veggies First keeps on your phone, what it sends to your reviewer, and how long it stays.">
+<meta property="og:description" content="What Veggies First keeps on your phone, what it keeps on its server, and how long it stays.">
 <meta property="og:type" content="website">
 <title>Veggies First · Privacy</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800&display=swap">
@@ -50,18 +50,29 @@ a { color: var(--sage); }
   <p class="lede">Veggies First is a to-do list that locks your dessert apps until the veggies are done. Here is what it keeps, where, and for how long.</p>
 
   <div class="card">
-    <h2>No account, no tracking</h2>
-    <p>There is nothing to sign up for. The app has no analytics, no ads and no third-party SDKs, and it never sells or shares anything with anyone but the reviewer you pick.</p>
-    <p>When it first runs, the app makes up a random install ID for itself. That ID is how a reviewer link knows whose proofs it shows. It is not tied to your name, your Apple ID or your phone.</p>
+    <h2>The short version</h2>
+    <ul>
+      <li>Your veggies, settings, Screen Time, Health and location live on your phone. If you sign in, a backup copy of your plate is kept in your account so you can get it back; you can switch that off.</li>
+      <li>No ads, no analytics, no tracking across other apps or sites, and nothing is sold.</li>
+      <li>The server holds your account, the backup of your plate if it's on, any proof you send to a reviewer, your household if you join one, and what you write to us.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>Your account</h2>
+    <p>You sign in with Apple. Apple gives the app an ID for you and an email address: your own, or a private relay address if you choose "Hide My Email". The app does not get your Apple password, and we do not ask for your name.</p>
+    <p>The server (hosted on Supabase) keeps that ID and email, the date the account was made, and for each phone you sign in on: a random install ID, the phone model and the app version.</p>
+    <p><strong>Backup of your plate:</strong> while you are signed in and “Back up to my account” is on (Setup → Backups), the app copies your plate to your account when you open it, a few hours apart at most, so a deleted app or a new phone can get it back. The copy holds what the plate holds: your veggies, repeats, backlog, history, dessert coins and settings, the places you saved for place veggies (name and location), your reviewers' names, and the day's log of sessions. It does not hold proof photos or clips, Health data beyond today's step count, or which apps you picked (those are opaque tokens that only mean something on the phone they came from). The server keeps each phone's last 14 days. Only your account can read them. Switching the backup off stops new copies and offers to delete the ones there; deleting your account deletes them all.</p>
+    <p><strong>Deleting your account:</strong> Setup → You → Delete account removes the account and everything filed under it from the server, for good.</p>
   </div>
 
   <div class="card">
     <h2>What stays on your phone</h2>
     <ul>
-      <li><strong>Your plate:</strong> veggies, repeats, buckets, backlog, history, dessert coins and settings. Stored on the phone only.</li>
+      <li><strong>Your plate:</strong> veggies, repeats, buckets, backlog, history, dessert coins and settings. Stored on the phone, with a week of daily copies beside it (Setup → Backups). It leaves the phone only as the account backup described above, if you are signed in and have it on.</li>
       <li><strong>Screen Time:</strong> which apps you picked as dessert and how long you used them. iOS gives the app opaque tokens, so it never learns which apps those are. Nothing leaves the phone.</li>
       <li><strong>Health:</strong> today's steps and walking distance, read for step veggies and the per-mile coin. Read only, never written, never sent.</li>
-      <li><strong>Location:</strong> used around the places you save (the gym, the library) to tell arriving from leaving, and during a route proof to draw the path. Coordinates never leave the phone; a route proof sends a map picture and the distance, time and steps.</li>
+      <li><strong>Location:</strong> used around the places you save (the gym, the library) to tell arriving from leaving, and during a route proof to draw the path. A route's path never leaves the phone; a route proof sends a map picture and the distance, time and steps. The places you saved are part of your plate, so they are in the account backup when that is on.</li>
     </ul>
   </div>
 
@@ -86,12 +97,27 @@ a { color: var(--sage); }
       <li>A reviewer link stops working after 48 hours and is deleted a day later. An invite code lasts a week.</li>
       <li>Deleting a veggie on your phone withdraws a proof that is still waiting.</li>
     </ul>
-    <p>Deleting the app removes everything on the phone. Anything still on the server ages out on the schedule above.</p>
+    <p>Deleting the app removes everything on the phone. Proofs still on the server age out on the schedule above; your account, and the backup of your plate in it, stay until you delete them.</p>
+  </div>
+
+  <div class="card">
+    <h2>Households</h2>
+    <p>If you start or join a household, the server holds what the phones in it share: each member's name as typed in the app and whether they are a parent or a kid, the shared jobs and who they were handed to, the rules a parent sets for a kid's phone, and a short log of household events. It also holds how many dessert apps a kid's phone has picked, never which ones.</p>
+    <p>Only phones in the household can read it. Leaving the household removes your phone from it; when the last parent deletes the household, all of it is deleted.</p>
+  </div>
+
+  <div class="card">
+    <h2>What you write to us</h2>
+    <p>A bug report or feature idea sent from Setup goes to the server with what you attach: text, screenshots, a screen recording or a voice note, plus the phone model and app version. We read it, may reply to you in the app, and keep it for one year from the day you sent it; then it is deleted, with what you attached. Ask and we will delete yours sooner.</p>
+    <p>If you answer "How did you hear about us?", that answer is stored once with your install ID.</p>
   </div>
 
   <div class="card">
     <h2>Children</h2>
-    <p>The app is not aimed at children under 13 and does not knowingly collect anything from them.</p>
+    <p>Veggies First and its households are for ages 13 and up. An account belongs to an adult or a teen 13 or older.</p>
+    <p>A child under 13 uses the app only on a phone their parent or legal guardian has added to a household with a kid code. Before the app makes a kid code it asks the parent to agree, once: that they are the child's parent or guardian, and that for a child under 13 they consent to the child using the app and to what a household keeps about them (listed under Households above). The server keeps the day the parent agreed and the parent's name as typed in the app. We do not ask for or keep anyone's age or birthday.</p>
+    <p>The parent can see what the household holds about the child in the app, and can remove the child's phone, and everything the household holds about it, at any time.</p>
+    <p>We do not knowingly let a child under 13 make an account of their own. If you think one has, write to us and we will delete it.</p>
   </div>
 
   <div class="card">
@@ -99,7 +125,7 @@ a { color: var(--sage); }
     <p>Write to <a href="mailto:matthewsb419@gmail.com">matthewsb419@gmail.com</a>. If this page changes, the date below changes with it.</p>
   </div>
 
-  <p class="small">Veggies First · last updated November 5, 2026</p>
+  <p class="small">Veggies First · last updated November 19, 2026</p>
 </main>
 </body>
 </html>
