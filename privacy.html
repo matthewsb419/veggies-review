@@ -55,23 +55,15 @@ a { color: var(--sage); }
       <li>Your veggies, settings, Screen Time, Health and location live on your phone. If you sign in, a backup copy of your plate is kept in your account so you can get it back; you can switch that off.</li>
       <li>No ads, no analytics, no tracking across other apps or sites, and nothing is sold.</li>
       <li>The server holds your account, the backup of your plate if it's on, any proof you send to a reviewer, your household if you join one, and what you write to us.</li>
-      <li>Apple handles payment. We never see your card.</li>
     </ul>
   </div>
 
   <div class="card">
     <h2>Your account</h2>
     <p>You sign in with Apple. Apple gives the app an ID for you and an email address: your own, or a private relay address if you choose "Hide My Email". The app does not get your Apple password, and we do not ask for your name.</p>
-    <p>The server (hosted on Supabase) keeps that ID and email, the date the account was made, and for each phone you sign in on: a random install ID, the phone model and the app version. That is how a new phone finds your plan.</p>
+    <p>The server (hosted on Supabase) keeps that ID and email, the date the account was made, and for each phone you sign in on: a random install ID, the phone model and the app version.</p>
     <p><strong>Backup of your plate:</strong> while you are signed in and “Back up to my account” is on (Setup → Backups), the app copies your plate to your account when you open it, a few hours apart at most, so a deleted app or a new phone can get it back. The copy holds what the plate holds: your veggies, repeats, backlog, history, dessert coins and settings, the places you saved for place veggies (name and location), your reviewers' names, and the day's log of sessions. It does not hold proof photos or clips, Health data beyond today's step count, or which apps you picked (those are opaque tokens that only mean something on the phone they came from). The server keeps each phone's last 14 days. Only your account can read them. Switching the backup off stops new copies and offers to delete the ones there; deleting your account deletes them all.</p>
-    <p><strong>Deleting your account:</strong> Setup → You → Delete account removes the account and everything filed under it from the server, for good. Cancel a subscription separately in the App Store; deleting the account does not cancel it.</p>
-  </div>
-
-  <div class="card">
-    <h2>Plans and payment</h2>
-    <p>Subscriptions and the lifetime purchase are bought through Apple's in-app purchase. Apple takes the payment and tells the app what you bought and when it renews or ends. We never receive your card or billing details.</p>
-    <p>The app uses RevenueCat to keep track of that purchase record. RevenueCat receives your account ID, what you bought, and dates and prices from Apple. It does not receive your veggies, your Screen Time or your email.</p>
-    <p><strong>Student and teacher price:</strong> you give a school email so we can send it a 6-digit code. We keep that address and the date it was confirmed for one year, to know when to ask again, and use it for nothing else.</p>
+    <p><strong>Deleting your account:</strong> Setup → You → Delete account removes the account and everything filed under it from the server, for good.</p>
   </div>
 
   <div class="card">
@@ -116,7 +108,7 @@ a { color: var(--sage); }
 
   <div class="card">
     <h2>What you write to us</h2>
-    <p>A bug report or feature idea sent from Setup goes to the server with what you attach: text, screenshots, a screen recording or a voice note, plus the phone model and app version. We read it, may reply to you in the app, and keep it while the app is being worked on. Ask and we will delete yours.</p>
+    <p>A bug report or feature idea sent from Setup goes to the server with what you attach: text, screenshots, a screen recording or a voice note, plus the phone model and app version. We read it, may reply to you in the app, and keep it for one year from the day you sent it; then it is deleted, with what you attached. Ask and we will delete yours sooner.</p>
     <p>If you answer "How did you hear about us?", that answer is stored once with your install ID.</p>
   </div>
 
@@ -133,7 +125,7 @@ a { color: var(--sage); }
     <p>Write to <a href="mailto:matthewsb419@gmail.com">matthewsb419@gmail.com</a>. If this page changes, the date below changes with it.</p>
   </div>
 
-  <p class="small">Veggies First · last updated November 14, 2026 (draft for version 1.0)</p>
+  <p class="small">Veggies First · last updated November 19, 2026</p>
 </main>
 </body>
 </html>
