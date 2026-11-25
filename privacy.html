@@ -63,8 +63,15 @@ a { color: var(--sage); }
     <h2>Your account</h2>
     <p>You sign in with Apple. Apple gives the app an ID for you and an email address: your own, or a private relay address if you choose "Hide My Email". The app does not get your Apple password, and we do not ask for your name.</p>
     <p>The server (hosted on Supabase) keeps that ID and email, the date the account was made, and for each phone you sign in on: a random install ID, the phone model and the app version.</p>
-    <p><strong>Backup of your plate:</strong> while you are signed in and “Back up to my account” is on (Setup → Backups), the app copies your plate to your account when you open it, a few hours apart at most, so a deleted app or a new phone can get it back. The copy holds what the plate holds: your veggies, repeats, backlog, history, dessert coins and settings, the places you saved for place veggies (name and location), your reviewers' names, and the day's log of sessions. It does not hold proof photos or clips, Health data beyond today's step count, or which apps you picked (those are opaque tokens that only mean something on the phone they came from). The server keeps each phone's last 14 days. Only your account can read them. Switching the backup off stops new copies and offers to delete the ones there; deleting your account deletes them all.</p>
+    <p><strong>Backup of your plate:</strong> while you are signed in and “Back up to my account” is on (Setup → Backups), the app copies your plate to your account when you open it, a few hours apart at most, so a deleted app or a new phone can get it back. The copy holds what the plate holds: your veggies, repeats, backlog, history, dessert coins and settings, the places you saved for place veggies (name and location), your reviewers' names and, if you typed one to text them a link, their phone numbers, and the day's log of sessions. It does not hold proof photos or clips, Health data beyond today's step count, or which apps you picked (those are opaque tokens that only mean something on the phone they came from). The server keeps each phone's last 14 days. Only your account can read them. Switching the backup off stops new copies and offers to delete the ones there; deleting your account deletes them all.</p>
     <p><strong>Deleting your account:</strong> Setup → You → Delete account removes the account and everything filed under it from the server, for good.</p>
+  </div>
+
+  <div class="card">
+    <h2>Your plan</h2>
+    <p>Plans are bought through Apple's In-App Purchase. Apple takes the payment; we never see your card or billing details.</p>
+    <p>To know which plan an account has, the app uses RevenueCat, a service that keeps track of App Store purchases. RevenueCat receives the ID of your account and what Apple reports about your purchases: which plan, when it started, and when it renews or ends. It does not get your name, your email or anything from your plate. In a household, the server asks RevenueCat whether someone in it holds a Household plan, so the others are covered.</p>
+    <p><strong>Student and teacher price:</strong> if you ask for it, you type a school email address and we send a 6-digit code there. The server keeps that address and the day your check is good until (a year), so you aren't asked again. It is used for nothing else, and deleting your account deletes it.</p>
   </div>
 
   <div class="card">
@@ -135,7 +142,7 @@ a { color: var(--sage); }
     <p>Write to <a href="mailto:matthewsb419@gmail.com">matthewsb419@gmail.com</a>. If this page changes, the date below changes with it.</p>
   </div>
 
-  <p class="small">Veggies First · last updated November 23, 2026</p>
+  <p class="small">Veggies First · last updated November 25, 2026</p>
 </main>
 </body>
 </html>
